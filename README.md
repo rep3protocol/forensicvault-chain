@@ -30,6 +30,48 @@ This project does not claim to provide a real blockchain, real cryptocurrency, l
 - External anchor JSON/text export
 - Fake TEST_VAULT local fee history
 
+## Screenshots
+
+![Dashboard](public/screenshots/dashboard.png)
+
+Dashboard overview showing the local evidence integrity workspace.
+
+![Demo Mode](public/screenshots/demo.png)
+
+Demo mode entry point for creating a guided sample case.
+
+![Demo Details](public/screenshots/demo-details.png)
+
+Demo workflow details with seeded evidence and custody context.
+
+![Cases](public/screenshots/cases.png)
+
+Cases list for reviewing and opening investigation records.
+
+![Case Detail](public/screenshots/case-detail.png)
+
+Case detail view with evidence, custody events, and export actions.
+
+![Verify Evidence](public/screenshots/verify-evidence.png)
+
+Evidence verification page for comparing uploaded files against registered hashes.
+
+![External Anchors](public/screenshots/anchors.png)
+
+External anchor export view for preserving ledger proof outside the local app.
+
+![Tamper Test Valid](public/screenshots/tamper-valid.png)
+
+Tamper test result showing evidence that still matches its registered hash.
+
+![Tamper Test Invalid](public/screenshots/tamper-invalid.png)
+
+Tamper test result showing a detected hash mismatch after file changes.
+
+![Tamper Test Restored](public/screenshots/tamper-restored.png)
+
+Tamper test result after restoring evidence to its original valid state.
+
 ## Tech Stack
 
 - Next.js App Router
