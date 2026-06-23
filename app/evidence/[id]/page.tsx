@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getDuplicateEvidenceForItem } from "@/lib/evidence/duplicates";
 import { prisma } from "@/lib/prisma";
+import { FEES, TEST_VAULT_SYMBOL } from "@/lib/token/testVault";
 import { addCustodyEvent } from "./actions";
 
 function shortHash(hash?: string | null) {
@@ -109,6 +110,45 @@ export default async function EvidenceDetailPage({
               {evidence.registeredTxHash ?? "Pending"}
             </p>
           </div>
+        </div>
+      </section>
+
+      <section className="mb-8 rounded-xl border border-slate-700 bg-slate-900/70 p-6">
+        <h2 className="mb-4 text-lg font-semibold">Actions</h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Link
+            href={`/cases/${evidence.caseId}`}
+            className="rounded-lg border border-slate-700 px-4 py-2 text-center text-sm font-semibold text-slate-200 transition-colors hover:border-slate-600 hover:bg-slate-800"
+          >
+            Back to Case
+          </Link>
+          <Link
+            href={`/verify/${evidence.id}`}
+            className="rounded-lg border border-slate-700 px-4 py-2 text-center text-sm font-semibold text-slate-200 transition-colors hover:border-slate-600 hover:bg-slate-800"
+          >
+            Verify Evidence
+          </Link>
+          <Link
+            href={`/reports/${evidence.id}`}
+            className="rounded-lg border border-slate-700 px-4 py-2 text-center text-sm font-semibold text-slate-200 transition-colors hover:border-slate-600 hover:bg-slate-800"
+          >
+            Open Integrity Report
+          </Link>
+          <Link
+            href={`/reports/${evidence.id}/download`}
+            className="rounded-lg bg-emerald-500 px-4 py-2 text-center text-sm font-semibold text-slate-950 transition-colors hover:bg-emerald-400"
+          >
+            Download PDF Report
+          </Link>
+        </div>
+        <div className="mt-4 space-y-1 text-sm text-slate-400">
+          <p>
+            Verify Evidence costs {FEES.VERIFY_EVIDENCE} {TEST_VAULT_SYMBOL}.
+          </p>
+          <p>PDF report export is currently free in the local MVP.</p>
+          <p className="font-semibold text-amber-300">
+            LOCAL TESTNET — {TEST_VAULT_SYMBOL} HAS NO REAL VALUE.
+          </p>
         </div>
       </section>
 
