@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { FirstRunHelper } from "@/components/FirstRunHelper";
 import { TestnetWarning } from "@/components/TestnetWarning";
 import { getCurrentUser } from "@/lib/auth/session";
 import { ensureWalletForUser } from "@/lib/auth/wallet";
 import { DEFAULT_WALLET_ADDRESS } from "@/lib/constants";
+import { getOnboardingProgress } from "@/lib/onboarding/progress";
 import { prisma } from "@/lib/prisma";
 
 export default async function HomePage() {
@@ -16,6 +18,7 @@ export default async function HomePage() {
     totalVerifications,
     defaultWallet,
     latestVerification,
+    onboardingProgress,
   ] = await Promise.all([
     prisma.case.count(),
     prisma.evidenceItem.count(),
@@ -31,6 +34,7 @@ export default async function HomePage() {
         evidence: { select: { originalName: true } },
       },
     }),
+    getOnboardingProgress(),
   ]);
   const wallet = currentUserWallet ?? defaultWallet;
 
@@ -78,6 +82,8 @@ export default async function HomePage() {
           </p>
         </div>
       </div>
+
+      <FirstRunHelper progress={onboardingProgress} />
 
       <section className="mb-10">
         <h2 className="mb-4 text-sm font-medium tracking-wide text-slate-300 uppercase">

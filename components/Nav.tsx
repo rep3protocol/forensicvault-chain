@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 
 const links = [
   { href: "/", label: "Dashboard" },
+  { href: "/getting-started", label: "Getting Started" },
   { href: "/cases", label: "Cases" },
   { href: "/ledger", label: "Ledger" },
   { href: "/anchors", label: "Anchors" },
