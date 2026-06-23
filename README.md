@@ -1,36 +1,120 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ForensicVault Chain
 
-## Getting Started
+Verify evidence. Prove custody. Protect truth.
 
-First, run the development server:
+**LOCAL TESTNET - TEST_VAULT HAS NO REAL VALUE.**
+
+ForensicVault Chain is a local-first forensic evidence integrity MVP. It registers digital evidence with SHA-256 hashes, records custody events, verifies files later, maintains a hash-linked local ledger, generates reports/case packets, supports tamper testing, and exports external anchor files.
+
+## Important Limitation
+
+This app is tamper-evident, not tamper-proof. If someone controls the local database or disk, they may rewrite local data. External anchor exports are used to make silent rewrites detectable later.
+
+This project does not claim to provide a real blockchain, real cryptocurrency, legal admissibility guarantees, or production-grade security.
+
+## Features
+
+- Local investigator login
+- Demo mode
+- First-run helper
+- Case creation
+- Evidence upload
+- SHA-256 hashing
+- Duplicate hash warning
+- Evidence verification
+- Chain-of-custody events
+- Local hash-linked ledger
+- Tamper test page
+- Individual PDF evidence reports
+- Case packet PDF export
+- External anchor JSON/text export
+- Fake TEST_VAULT local fee history
+
+## Tech Stack
+
+- Next.js App Router
+- TypeScript
+- Tailwind CSS
+- Prisma 7
+- SQLite
+- `@prisma/adapter-better-sqlite3`
+- `pdf-lib`
+- Node crypto
+
+## Local Setup
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Create `.env`:
+
+```bash
+DATABASE_URL="file:./dev.db"
+```
+
+Run database migrations:
+
+```bash
+npx prisma migrate dev
+```
+
+Start the local dev server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```text
+http://localhost:3000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Seed local development data:
 
-## Learn More
+```text
+http://localhost:3000/api/dev/seed
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Default Local Dev Login
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+These credentials are for local development only:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```text
+Email: local@forensicvault.dev
+Password: localdev123
+```
 
-## Deploy on Vercel
+## Demo Workflow
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Log in.
+2. Open Demo.
+3. Create Demo Case.
+4. Open Demo Case.
+5. View duplicate SHA-256 warning.
+6. Verify evidence.
+7. View custody event.
+8. Download case packet.
+9. Export anchor.
+10. Run tamper test.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Project Status
+
+Local MVP / testnet simulation.
+
+ForensicVault Chain is intended for local development, demos, training, and exploration of forensic integrity workflows. It does not publish to a real blockchain or timestamp authority automatically.
+
+## Roadmap
+
+- Better production auth
+- Streaming file uploads
+- Stronger custody signatures
+- RFC 3161 timestamping
+- GitHub/Gist anchoring
+- Audit log export
+- Role-based permissions
+- Evidence search/filtering
+- Deployment hardening
