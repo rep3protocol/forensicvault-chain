@@ -13,7 +13,16 @@ import { shortenHash } from "@/lib/format";
 import { scanShield } from "@/lib/shield/scan";
 import { severityClassName } from "@/lib/shield/severity";
 import { countAlertsBySeverity } from "@/lib/shield/summary";
-import type { ShieldAlert, ShieldAlertCategory, ShieldStatus } from "@/lib/shield/types";
+import type {
+  ShieldAlert,
+  ShieldAlertCategory,
+  ShieldEventSummary,
+  ShieldStatus,
+} from "@/lib/shield/types";
+import {
+  acknowledgeShieldAlert,
+  clearShieldAcknowledgement,
+} from "@/app/guard/actions";
 
 function statusClassName(status: ShieldStatus) {
   switch (status) {
@@ -56,13 +65,23 @@ function SummaryCard({
 }
 
 function AlertCard({ alert }: { alert: ShieldAlert }) {
+  const acknowledgement = alert.acknowledgement;
+  const canAcknowledge = alert.severity !== "INFO";
+
   return (
     <article className={`rounded-lg border p-5 ${severityClassName(alert.severity)}`}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <span className="inline-flex rounded border border-current/30 px-2 py-0.5 text-xs font-semibold">
-            {alert.severity}
-          </span>
+          <div className="flex flex-wrap gap-2">
+            <span className="inline-flex rounded border border-current/30 px-2 py-0.5 text-xs font-semibold">
+              {alert.severity}
+            </span>
+            {acknowledgement && (
+              <span className="inline-flex rounded border border-emerald-400/40 bg-emerald-400/10 px-2 py-0.5 text-xs font-semibold text-emerald-200">
+                Acknowledged
+              </span>
+            )}
+          </div>
           <h3 className="mt-3 text-base font-semibold text-slate-100">
             {alert.title}
           </h3>
@@ -90,6 +109,60 @@ function AlertCard({ alert }: { alert: ShieldAlert }) {
           <dd className="mt-1 text-slate-300">{alert.action}</dd>
         </div>
       </dl>
+      {canAcknowledge && acknowledgement ? (
+        <div className="mt-4 rounded border border-emerald-500/30 bg-emerald-950/20 p-4">
+          <p className="text-xs font-medium tracking-wide text-emerald-200 uppercase">
+            Reviewed By
+          </p>
+          <p className="mt-1 text-sm text-slate-200">
+            {acknowledgement.acknowledgedByName} ·{" "}
+            {acknowledgement.acknowledgedAt.toLocaleString()}
+          </p>
+          {acknowledgement.note && (
+            <p className="mt-3 text-sm leading-relaxed text-slate-300">
+              {acknowledgement.note}
+            </p>
+          )}
+          <form action={clearShieldAcknowledgement} className="mt-4">
+            <input type="hidden" name="alertId" value={alert.id} />
+            <button
+              type="submit"
+              className="rounded border border-slate-600 bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:border-slate-500 hover:bg-slate-800"
+            >
+              Clear Acknowledgement
+            </button>
+          </form>
+        </div>
+      ) : canAcknowledge ? (
+        <form
+          action={acknowledgeShieldAlert}
+          className="mt-4 rounded border border-slate-700 bg-slate-950/40 p-4"
+        >
+          <input type="hidden" name="alertId" value={alert.id} />
+          <input type="hidden" name="alertTitle" value={alert.title} />
+          <input type="hidden" name="severity" value={alert.severity} />
+          <input type="hidden" name="category" value={alert.category} />
+          <input type="hidden" name="reference" value={alert.reference ?? ""} />
+          <input type="hidden" name="reason" value={alert.reason} />
+          <label className="block">
+            <span className="text-xs font-medium tracking-wide text-slate-400 uppercase">
+              Optional Review Note
+            </span>
+            <textarea
+              name="note"
+              rows={3}
+              className="mt-2 w-full rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:border-cyan-600 focus:outline-none"
+              placeholder="Document why this deterministic alert was reviewed."
+            />
+          </label>
+          <button
+            type="submit"
+            className="mt-3 rounded bg-cyan-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-cyan-600"
+          >
+            Acknowledge Alert
+          </button>
+        </form>
+      ) : null}
     </article>
   );
 }
@@ -127,11 +200,63 @@ function alertsForCategory(alerts: ShieldAlert[], category: ShieldAlertCategory)
   return alerts.filter((alert) => alert.category === category);
 }
 
+function EventLog({ events }: { events: ShieldEventSummary[] }) {
+  return (
+    <section className="mb-10">
+      <h2 className="mb-4 text-sm font-medium tracking-wide text-slate-300 uppercase">
+        Shield Event Log
+      </h2>
+      {events.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-slate-700 bg-slate-900/30 px-6 py-8 text-sm text-slate-400">
+          No Shield acknowledgement events recorded yet.
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border border-slate-800">
+          <table className="w-full min-w-[56rem] text-left text-sm">
+            <thead className="border-b border-slate-800 bg-slate-900/80">
+              <tr>
+                <th className="px-4 py-3 font-medium text-slate-400">Event</th>
+                <th className="px-4 py-3 font-medium text-slate-400">Title</th>
+                <th className="px-4 py-3 font-medium text-slate-400">Actor</th>
+                <th className="px-4 py-3 font-medium text-slate-400">Created</th>
+                <th className="px-4 py-3 font-medium text-slate-400">Alert ID</th>
+                <th className="px-4 py-3 font-medium text-slate-400">Description</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800 bg-slate-900/30">
+              {events.map((event) => (
+                <tr key={event.id}>
+                  <td className="px-4 py-3 font-mono text-xs text-cyan-300">
+                    {event.eventType}
+                  </td>
+                  <td className="px-4 py-3 text-slate-200">{event.title}</td>
+                  <td className="px-4 py-3 text-slate-400">
+                    {event.actorName ?? "—"}
+                  </td>
+                  <td className="px-4 py-3 text-slate-400">
+                    {event.createdAt.toLocaleString()}
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs text-slate-500">
+                    {event.alertId ?? "—"}
+                  </td>
+                  <td className="px-4 py-3 text-slate-400">
+                    {event.description}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default async function GuardPage() {
   await requireCurrentUser();
   const scan = await scanShield();
-  const counts = countAlertsBySeverity(scan.alerts);
-  const criticalHighAlerts = scan.alerts.filter(
+  const activeCounts = countAlertsBySeverity(scan.unacknowledgedAlerts);
+  const criticalHighAlerts = scan.unacknowledgedAlerts.filter(
     (alert) => alert.severity === "CRITICAL" || alert.severity === "HIGH",
   );
   const evidenceAlerts = alertsForCategory(scan.alerts, "evidence");
@@ -166,6 +291,11 @@ export default async function GuardPage() {
           <p className="mt-2 text-xs text-slate-400">
             Last scan: {scan.generatedAt.toLocaleString()}
           </p>
+          {scan.rawStatus !== scan.status && (
+            <p className="mt-1 text-xs text-slate-400">
+              Raw status before acknowledgements: {displayStatus(scan.rawStatus)}
+            </p>
+          )}
         </div>
       </div>
 
@@ -188,10 +318,28 @@ export default async function GuardPage() {
           <SummaryCard
             label="Overall Shield Status"
             value={displayStatus(scan.status)}
-            detail="CRITICAL, Risk, Watch, or Clear"
+            detail="Based on unacknowledged alerts"
           />
-          <SummaryCard label="Critical Alerts" value={counts.CRITICAL} />
-          <SummaryCard label="High Alerts" value={counts.HIGH} />
+          <SummaryCard
+            label="Unacknowledged Critical"
+            value={activeCounts.CRITICAL}
+            detail="Active critical alerts"
+          />
+          <SummaryCard
+            label="Unacknowledged High"
+            value={activeCounts.HIGH}
+            detail="Active high alerts"
+          />
+          <SummaryCard
+            label="Acknowledged Alerts"
+            value={scan.metrics.acknowledgedAlertCount}
+            detail="Reviewed, still active"
+          />
+          <SummaryCard
+            label="Unacknowledged Alerts"
+            value={scan.unacknowledgedAlerts.length}
+            detail="All active severities"
+          />
           <SummaryCard
             label="Evidence Without Verification"
             value={scan.metrics.evidenceWithoutVerification}
@@ -228,7 +376,13 @@ export default async function GuardPage() {
       <AlertSection
         title="Critical / High Alerts"
         alerts={criticalHighAlerts}
-        empty="No critical or high alerts detected by the rule-based monitor."
+        empty="No unacknowledged critical or high alerts detected by the rule-based monitor."
+      />
+
+      <AlertSection
+        title="Acknowledged Alerts"
+        alerts={scan.acknowledgedAlerts}
+        empty="No active Shield alerts have been acknowledged yet."
       />
 
       <AlertSection
@@ -361,6 +515,8 @@ export default async function GuardPage() {
           </div>
         </div>
       </section>
+
+      <EventLog events={scan.recentEvents} />
     </div>
   );
 }
