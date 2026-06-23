@@ -4,6 +4,8 @@ import { getAnchorExport, getAnchorText } from "@/lib/anchors/anchor";
 import {
   compareCurrentAnchorToRecord,
   compareCurrentAnchorToLatestRecord,
+  findDuplicateAnchorRecordForCurrent,
+  getDuplicateAnchorRecordGroups,
   getAnchorRecords,
 } from "@/lib/anchors/history";
 import { formatHash } from "@/lib/format";
@@ -67,11 +69,22 @@ function comparisonClassName(status: string) {
   }
 }
 
-export default async function AnchorsPage() {
-  const [anchor, records, latestComparison] = await Promise.all([
+export default async function AnchorsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    duplicateAnchor?: string;
+    existingAnchorId?: string;
+  }>;
+}) {
+  const query = await searchParams;
+  const [anchor, records, latestComparison, currentDuplicate, duplicateGroups] =
+    await Promise.all([
     getAnchorExport(),
     getAnchorRecords(),
     compareCurrentAnchorToLatestRecord(),
+    findDuplicateAnchorRecordForCurrent(),
+    getDuplicateAnchorRecordGroups(),
   ]);
   const recordComparisons = new Map(
     await Promise.all(
@@ -110,6 +123,25 @@ export default async function AnchorsPage() {
           outside this app.
         </p>
       </section>
+
+      {(query.duplicateAnchor === "1" || currentDuplicate) && (
+        <section className="mb-8 rounded-lg border border-cyan-500/40 bg-cyan-500/10 p-5 text-sm leading-relaxed text-cyan-100/90">
+          <p className="font-semibold text-cyan-100">
+            An identical anchor snapshot already exists for this ledger state.
+          </p>
+          <p className="mt-2">
+            Saving again will not create a duplicate by default. Add a label in
+            the save form to update the existing snapshot label, or use
+            Publication Tracking to update its URL and notes.
+          </p>
+          {currentDuplicate && (
+            <p className="mt-2 font-mono text-xs text-cyan-100/80">
+              Existing snapshot: {currentDuplicate.id} · height{" "}
+              {currentDuplicate.latestBlockHeight}
+            </p>
+          )}
+        </section>
+      )}
 
       <section className="mb-8">
         <h2 className="mb-4 text-sm font-medium tracking-wide text-slate-300 uppercase">
@@ -187,7 +219,9 @@ export default async function AnchorsPage() {
         </form>
         <p className="mt-3 text-xs leading-relaxed text-slate-500">
           Saved snapshots stay local. Publish the hash and root elsewhere if you
-          need external comparison later.
+          need external comparison later. If this ledger state is already saved,
+          this form updates the existing snapshot label instead of creating a
+          duplicate record.
         </p>
       </section>
 
@@ -250,6 +284,18 @@ export default async function AnchorsPage() {
         <h2 className="mb-4 text-sm font-medium tracking-wide text-slate-300 uppercase">
           Anchor History
         </h2>
+        {duplicateGroups.length > 0 && (
+          <div className="mb-5 rounded border border-amber-500/40 bg-amber-500/10 p-4 text-sm leading-relaxed text-amber-100/90">
+            <p className="font-semibold text-amber-100">
+              Duplicate saved anchor snapshots detected.
+            </p>
+            <p className="mt-1">
+              {duplicateGroups.length} duplicate group(s) share the same
+              latestBlockHeight, latestBlockHash, and ledgerRoot. Existing
+              duplicates are not deleted automatically.
+            </p>
+          </div>
+        )}
         {records.length === 0 ? (
           <div className="rounded-lg border border-dashed border-slate-700 bg-slate-900/30 px-6 py-10 text-center">
             <p className="text-sm text-slate-400">

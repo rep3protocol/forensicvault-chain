@@ -25,6 +25,8 @@ type EvidenceForRule = {
     notes: string | null;
     previousEventHash: string | null;
     eventHash: string;
+    publicKey: string | null;
+    signature: string | null;
     createdAt: Date;
   }[];
 };
@@ -340,8 +342,32 @@ export function anchorAlerts(input: {
   savedAnchorCount: number;
   latestSavedAnchorHeight: number | null;
   latestComparison: AnchorComparisonResult;
+  duplicateAnchorRecordGroupCount: number;
 }): ShieldAlert[] {
-  const { savedAnchorCount, latestSavedAnchorHeight, latestComparison } = input;
+  const {
+    savedAnchorCount,
+    latestSavedAnchorHeight,
+    latestComparison,
+    duplicateAnchorRecordGroupCount,
+  } = input;
+  const duplicateAlerts =
+    duplicateAnchorRecordGroupCount > 0
+      ? [
+          createAlert({
+            id: "anchor-duplicate-snapshots",
+            severity: "LOW" as const,
+            category: "anchors" as const,
+            title: "Duplicate saved anchor snapshots",
+            description:
+              "Multiple saved anchor snapshot groups contain repeated ledger state values.",
+            reference: "AnchorRecord",
+            reason:
+              "Multiple AnchorRecord rows share the same latestBlockHeight, latestBlockHash, and ledgerRoot.",
+            action:
+              "Keep one authoritative snapshot per ledger state or add notes explaining why duplicates exist.",
+          }),
+        ]
+      : [];
 
   if (savedAnchorCount === 0) {
     return [
@@ -355,6 +381,7 @@ export function anchorAlerts(input: {
         reason: "AnchorRecord count is 0.",
         action: "Save an anchor snapshot after important ledger changes.",
       }),
+      ...duplicateAlerts,
     ];
   }
 
@@ -371,6 +398,7 @@ export function anchorAlerts(input: {
         reason: latestComparison.reason,
         action: "Continue exporting anchors after important ledger changes.",
       }),
+      ...duplicateAlerts,
     ];
   }
 
@@ -392,6 +420,7 @@ export function anchorAlerts(input: {
         action:
           "Save a new anchor snapshot and publish it externally if this ledger growth is expected.",
       }),
+      ...duplicateAlerts,
     ];
   }
 
@@ -412,6 +441,7 @@ export function anchorAlerts(input: {
         reason: latestComparison.reason,
         action: "Review whether the database was restored, replaced, or rewritten.",
       }),
+      ...duplicateAlerts,
     ];
   }
 
@@ -427,6 +457,63 @@ export function anchorAlerts(input: {
       reason: latestComparison.reason,
       action:
         "Review for local database rewrite, restore, corruption, or tamper-test activity.",
+    }),
+    ...duplicateAlerts,
+  ];
+}
+
+export function caseReadinessAlerts(input: {
+  warningCaseCount: number;
+  caseExamples: { caseId: string; title: string; warningCount: number; failCount: number }[];
+}): ShieldAlert[] {
+  if (input.warningCaseCount === 0) return [];
+
+  const example = input.caseExamples[0];
+
+  return [
+    createAlert({
+      id: "case-readiness-warnings",
+      severity: "MEDIUM",
+      category: "cases",
+      title: "Case readiness warnings exist",
+      description:
+        "One or more cases have readiness warnings or failures before case packet closeout.",
+      reference: example ? `/cases/${example.caseId}` : "Case readiness",
+      reason: `${input.warningCaseCount} case(s) have readiness warnings or failures.`,
+      action: "Open affected case detail pages and review the Case Readiness checklist.",
+    }),
+  ];
+}
+
+export function signatureReadinessAlerts(warningCount: number): ShieldAlert[] {
+  if (warningCount === 0) {
+    return [
+      createAlert({
+        id: "signature-readiness-clear",
+        severity: "INFO",
+        category: "custody",
+        title: "Custody signature readiness clear",
+        description:
+          "Custody events with recorded signing fields do not currently show missing or placeholder signature data.",
+        reference: "Custody events",
+        reason: "Signature readiness warning count is 0.",
+        action: "Continue reviewing custody signatures alongside hash linkage.",
+      }),
+    ];
+  }
+
+  return [
+    createAlert({
+      id: "signature-readiness-warnings",
+      severity: "MEDIUM",
+      category: "custody",
+      title: "Custody signature readiness warnings exist",
+      description:
+        "Some custody events have missing signature fields or placeholder/local public key values.",
+      reference: "Custody events",
+      reason: `${warningCount} custody event(s) need signature readiness review.`,
+      action:
+        "Review custody signing fields before relying on this record outside local MVP testing.",
     }),
   ];
 }

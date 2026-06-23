@@ -95,12 +95,17 @@ export default async function DemoPage() {
       </div>
 
       <section className="mb-8 rounded-lg border border-amber-500/40 bg-amber-500/10 p-5 text-sm leading-relaxed text-amber-100/90">
-        <p className="font-semibold text-amber-100">Local demo data only.</p>
+        <p className="font-semibold text-amber-100">
+          Demo actions are local test data only.
+        </p>
         <p className="mt-2">
-          This page creates or resets local demo data only. It is intended for
-          training, screenshots, and product demos. Reset removes demo
-          application records and demo files, but leaves ledger history
-          append-only so the chain is not corrupted.
+          This page is intended for training, screenshots, and product demos.
+          Resetting demo data should not be treated as deleting real evidence.
+          Reset removes demo application records and demo files only.
+        </p>
+        <p className="mt-2">
+          The ledger may retain historical demo transactions if append-only
+          behavior is preserved.
         </p>
       </section>
 

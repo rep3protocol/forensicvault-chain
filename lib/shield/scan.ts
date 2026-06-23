@@ -2,13 +2,17 @@ import { readdir } from "node:fs/promises";
 import path from "node:path";
 import {
   anchorAlerts,
+  caseReadinessAlerts,
   custodyAlerts,
   duplicateAlerts,
   evidenceAlerts,
   ledgerAlerts,
+  signatureReadinessAlerts,
   tamperBackupAlerts,
 } from "@/lib/shield/rules";
 import { getAnchorHistorySummary } from "@/lib/anchors/history";
+import { getCaseReadinessSummaries } from "@/lib/cases/readiness";
+import { getSignatureReadinessForEvents } from "@/lib/custody/signatureReadiness";
 import { compareSeverity } from "@/lib/shield/severity";
 import {
   computeRawShieldStatus,
@@ -89,6 +93,7 @@ export async function scanShield(): Promise<ShieldScanResult> {
     evidenceItems,
     tamperBackupFileCount,
     anchorHistorySummary,
+    caseReadinessSummaries,
   ] = await Promise.all([
     validateLedgerChain(),
     prisma.ledgerBlock.findFirst({ orderBy: { height: "desc" } }),
@@ -127,6 +132,8 @@ export async function scanShield(): Promise<ShieldScanResult> {
             notes: true,
             previousEventHash: true,
             eventHash: true,
+            publicKey: true,
+            signature: true,
             createdAt: true,
           },
           orderBy: { createdAt: "asc" },
@@ -135,9 +142,21 @@ export async function scanShield(): Promise<ShieldScanResult> {
     }),
     countTamperBackupFiles(),
     getAnchorHistorySummary(),
+    getCaseReadinessSummaries(),
   ]);
 
   const duplicateGroups = getDuplicateGroups(evidenceItems);
+  const signatureReadiness = getSignatureReadinessForEvents(
+    evidenceItems.flatMap((evidence) => evidence.custodyEvents),
+  );
+  const signatureReadinessWarningCount =
+    signatureReadiness.status === "WARNING"
+      ? signatureReadiness.missingSignatureCount +
+        signatureReadiness.placeholderPublicKeyCount
+      : 0;
+  const casesWithReadinessWarnings = caseReadinessSummaries.filter(
+    (caseItem) => caseItem.warningCount > 0 || caseItem.failCount > 0,
+  );
   const rawAlerts = [
     ...ledgerAlerts(ledgerValidation.valid, ledgerValidation.errors),
     ...evidenceAlerts(evidenceItems),
@@ -148,7 +167,14 @@ export async function scanShield(): Promise<ShieldScanResult> {
       savedAnchorCount: anchorHistorySummary.savedAnchorCount,
       latestSavedAnchorHeight: anchorHistorySummary.latestSavedAnchorHeight,
       latestComparison: anchorHistorySummary.latestComparison,
+      duplicateAnchorRecordGroupCount:
+        anchorHistorySummary.duplicateAnchorRecordGroupCount,
     }),
+    ...caseReadinessAlerts({
+      warningCaseCount: casesWithReadinessWarnings.length,
+      caseExamples: casesWithReadinessWarnings.slice(0, 3),
+    }),
+    ...signatureReadinessAlerts(signatureReadinessWarningCount),
   ].sort((a, b) => compareSeverity(a.severity, b.severity));
   const activeAlertIds = rawAlerts.map((alert) => alert.id);
   const [acknowledgements, recentEvents] = await Promise.all([
@@ -228,6 +254,9 @@ export async function scanShield(): Promise<ShieldScanResult> {
     latestSavedAnchorHeight: anchorHistorySummary.latestSavedAnchorHeight,
     latestAnchorMatchesCurrent: anchorHistorySummary.latestAnchorMatchesCurrent,
     latestAnchorComparisonStatus: anchorHistorySummary.latestAnchorComparisonStatus,
+    duplicateAnchorRecordGroups: anchorHistorySummary.duplicateAnchorRecordGroupCount,
+    caseReadinessWarningCount: casesWithReadinessWarnings.length,
+    signatureReadinessWarningCount,
   };
   const status = computeShieldStatus(unacknowledgedAlerts);
   const rawStatus = computeRawShieldStatus(alerts);

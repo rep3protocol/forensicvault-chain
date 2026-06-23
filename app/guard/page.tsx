@@ -264,6 +264,7 @@ export default async function GuardPage() {
   const ledgerAlerts = alertsForCategory(scan.alerts, "ledger");
   const duplicateAlerts = alertsForCategory(scan.alerts, "duplicates");
   const anchorAlerts = alertsForCategory(scan.alerts, "anchors");
+  const caseAlerts = alertsForCategory(scan.alerts, "cases");
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-10">
@@ -355,6 +356,11 @@ export default async function GuardPage() {
             detail={`${scan.metrics.crossCaseDuplicateHashGroups} cross-case`}
           />
           <SummaryCard
+            label="Case Readiness Warnings"
+            value={scan.metrics.caseReadinessWarningCount}
+            detail="Cases needing checklist review"
+          />
+          <SummaryCard
             label="Ledger Status"
             value={scan.metrics.ledgerValid ? "Valid" : "Invalid"}
             detail={`${scan.metrics.totalLedgerBlocks} blocks checked`}
@@ -372,6 +378,22 @@ export default async function GuardPage() {
         <SummaryCard label="Total Evidence Items" value={scan.metrics.totalEvidenceItems} />
         <SummaryCard label="Total Custody Events" value={scan.metrics.totalCustodyEvents} />
         <SummaryCard label="Total Verifications" value={scan.metrics.totalVerifications} />
+        <SummaryCard
+          label="Unverified Evidence"
+          value={scan.metrics.evidenceWithoutVerification}
+        />
+        <SummaryCard
+          label="Cross-case Duplicate Groups"
+          value={scan.metrics.crossCaseDuplicateHashGroups}
+        />
+        <SummaryCard
+          label="Signature Readiness Warnings"
+          value={scan.metrics.signatureReadinessWarningCount}
+        />
+        <SummaryCard
+          label="Duplicate Anchor Groups"
+          value={scan.metrics.duplicateAnchorRecordGroups}
+        />
       </section>
 
       <AlertSection
@@ -397,6 +419,38 @@ export default async function GuardPage() {
         alerts={custodyAlerts}
         empty="No custody integrity alerts detected."
       />
+
+      <section className="mb-10">
+        <h2 className="mb-4 text-sm font-medium tracking-wide text-slate-300 uppercase">
+          Case Readiness
+        </h2>
+        <div className="mb-4 grid gap-4 md:grid-cols-3">
+          <SummaryCard
+            label="Cases With Readiness Warnings"
+            value={scan.metrics.caseReadinessWarningCount}
+          />
+          <SummaryCard
+            label="Signature Readiness Warnings"
+            value={scan.metrics.signatureReadinessWarningCount}
+          />
+          <SummaryCard
+            label="Evidence Inventory"
+            value={scan.metrics.totalEvidenceItems}
+            detail={`${scan.metrics.evidenceWithoutVerification} unverified`}
+          />
+        </div>
+        {caseAlerts.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-slate-700 bg-slate-900/30 px-6 py-8 text-sm text-slate-400">
+            No case readiness alerts detected.
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {caseAlerts.map((alert) => (
+              <AlertCard key={alert.id} alert={alert} />
+            ))}
+          </div>
+        )}
+      </section>
 
       <section className="mb-10">
         <h2 className="mb-4 text-sm font-medium tracking-wide text-slate-300 uppercase">
@@ -500,6 +554,11 @@ export default async function GuardPage() {
                 ? "Current ledger matches latest saved anchor"
                 : "Requires review"
             }
+          />
+          <SummaryCard
+            label="Duplicate Anchor Groups"
+            value={scan.metrics.duplicateAnchorRecordGroups}
+            detail="Repeated saved ledger states"
           />
         </div>
         {anchorAlerts.length === 0 ? (

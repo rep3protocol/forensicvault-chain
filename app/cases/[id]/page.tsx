@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { TestnetWarning } from "@/components/TestnetWarning";
+import { getCaseReadiness } from "@/lib/cases/readiness";
 import { getDuplicateCountsByHashes } from "@/lib/evidence/duplicates";
 import { shortenHash } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
@@ -8,6 +9,19 @@ import { prisma } from "@/lib/prisma";
 type CaseDetailPageProps = {
   params: Promise<{ id: string }>;
 };
+
+function readinessClassName(status: string) {
+  switch (status) {
+    case "PASS":
+      return "bg-emerald-900/50 text-emerald-300";
+    case "FAIL":
+      return "bg-red-900/50 text-red-300";
+    case "WARNING":
+      return "bg-amber-900/50 text-amber-300";
+    default:
+      return "bg-slate-800 text-slate-300";
+  }
+}
 
 export default async function CaseDetailPage({ params }: CaseDetailPageProps) {
   const { id } = await params;
@@ -29,6 +43,7 @@ export default async function CaseDetailPage({ params }: CaseDetailPageProps) {
   const duplicateCounts = await getDuplicateCountsByHashes(
     caseItem.evidence.map((item) => item.sha256Hash),
   );
+  const readiness = await getCaseReadiness(caseItem.id);
   const hasDuplicateHash = (hash: string) => (duplicateCounts.get(hash) ?? 0) > 1;
 
   return (
@@ -125,6 +140,54 @@ export default async function CaseDetailPage({ params }: CaseDetailPageProps) {
           </p>
         </section>
       </div>
+
+      {readiness && (
+        <section className="mb-10 rounded-lg border border-slate-800 bg-slate-900/50 p-6">
+          <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-medium tracking-wide text-slate-300 uppercase">
+                Case Readiness
+              </h2>
+              <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-400">
+                Advisory checklist for packet export, verification coverage,
+                custody linkage, anchor state, duplicate evidence, and local
+                signature readiness. Export is not blocked.
+              </p>
+            </div>
+            <Link
+              href="/guard"
+              className="rounded border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm font-medium text-slate-200 transition-colors hover:border-slate-600 hover:bg-slate-800"
+            >
+              Open Shield
+            </Link>
+          </div>
+          <div className="grid gap-3">
+            {readiness.checks.map((item) => (
+              <div
+                key={item.id}
+                className="rounded border border-slate-800 bg-slate-950/40 p-4"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h3 className="font-medium text-slate-100">{item.label}</h3>
+                    <p className="mt-1 text-sm leading-relaxed text-slate-400">
+                      {item.detail}
+                    </p>
+                  </div>
+                  <span
+                    className={`rounded px-2.5 py-1 text-xs font-semibold ${readinessClassName(
+                      item.status,
+                    )}`}
+                  >
+                    {item.status}
+                  </span>
+                </div>
+                <p className="mt-3 text-sm text-slate-300">{item.action}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section>
         <h2 className="mb-4 text-sm font-medium tracking-wide text-slate-300 uppercase">
