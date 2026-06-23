@@ -160,3 +160,8 @@ ForensicVault Chain is intended for local development, demos, training, and expl
 - Role-based permissions
 - Evidence search/filtering
 - Deployment hardening
+## License
+
+Copyright (c) 2026 Luis Correa / rep3protocol. All rights reserved.
+
+This project is public for viewing and portfolio purposes, but it is not open source. No permission is granted to copy, modify, distribute, sublicense, sell, host, deploy, or use this software without prior written permission.
