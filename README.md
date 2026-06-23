@@ -95,6 +95,8 @@ Create `.env`:
 
 ```bash
 DATABASE_URL="file:./dev.db"
+LOCAL_DEV_SEED_EMAIL="local@forensicvault.dev"
+LOCAL_DEV_SEED_PASSWORD="change-me-local-only"
 ```
 
 Run database migrations:
@@ -123,12 +125,11 @@ http://localhost:3000/api/dev/seed
 
 ## Default Local Dev Login
 
-These credentials are for local development only:
+The seed route creates a local development account only. The email defaults to
+`local@forensicvault.dev`, or the value of `LOCAL_DEV_SEED_EMAIL` in `.env`.
 
-```text
-Email: local@forensicvault.dev
-Password: localdev123
-```
+Set the local-only password with `LOCAL_DEV_SEED_PASSWORD` in `.env` before
+running the seed route. Do not reuse this password outside local development.
 
 ## Demo Workflow
 

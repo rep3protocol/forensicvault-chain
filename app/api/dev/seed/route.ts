@@ -2,22 +2,41 @@ import { NextResponse } from "next/server";
 import { hashPassword } from "@/lib/auth/password";
 import { prisma } from "@/lib/prisma";
 
-const LOCAL_EMAIL = "local@forensicvault.dev";
-const LOCAL_PASSWORD = "localdev123";
+const DEFAULT_LOCAL_EMAIL = "local@forensicvault.dev";
 
 export async function GET() {
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json(
+      { error: "Local development seeding is disabled in production." },
+      { status: 403 },
+    );
+  }
+
+  const localEmail = process.env.LOCAL_DEV_SEED_EMAIL?.trim() || DEFAULT_LOCAL_EMAIL;
+  const localPassword = process.env.LOCAL_DEV_SEED_PASSWORD;
+
+  if (!localPassword) {
+    return NextResponse.json(
+      {
+        error:
+          "LOCAL_DEV_SEED_PASSWORD is required for local development seeding. Set it in .env and try again.",
+      },
+      { status: 400 },
+    );
+  }
+
   const user = await prisma.user.upsert({
     where: {
       publicKey: "LOCAL_DEV_PUBLIC_KEY",
     },
     update: {
-      email: LOCAL_EMAIL,
-      passwordHash: hashPassword(LOCAL_PASSWORD),
+      email: localEmail,
+      passwordHash: hashPassword(localPassword),
     },
     create: {
       name: "Local Investigator",
-      email: LOCAL_EMAIL,
-      passwordHash: hashPassword(LOCAL_PASSWORD),
+      email: localEmail,
+      passwordHash: hashPassword(localPassword),
       role: "Investigator",
       publicKey: "LOCAL_DEV_PUBLIC_KEY",
     },
@@ -50,8 +69,8 @@ export async function GET() {
     },
     wallet,
     credentials: {
-      email: LOCAL_EMAIL,
-      password: LOCAL_PASSWORD,
+      email: localEmail,
+      password: "Configured by LOCAL_DEV_SEED_PASSWORD in .env",
     },
     warning: "TEST_VAULT is a fake local test token with no real value.",
   });
