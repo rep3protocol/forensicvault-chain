@@ -1,0 +1,21 @@
+node_modules/
+.next/
+.env
+.env*.local
+.DS_Store
+
+# Local SQLite databases
+dev.db
+dev.db-journal
+prisma/dev.db
+prisma/dev.db-journal
+
+# Local evidence and destructive-test backups
+storage/evidence/
+storage/tamper-test-backups/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*

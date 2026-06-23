@@ -1,0 +1,143 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?
+  role      String   @default("Investigator")
+  publicKey String?  @unique
+  createdAt DateTime @default(now())
+
+  cases  Case[]
+  events CustodyEvent[]
+}
+
+model Case {
+  id           String   @id @default(cuid())
+  title        String
+  description  String?
+  jurisdiction String?
+  status       String   @default("OPEN")
+  tags         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  ownerId String?
+  owner   User?   @relation(fields: [ownerId], references: [id])
+
+  evidence EvidenceItem[]
+}
+
+model EvidenceItem {
+  id     String @id @default(cuid())
+  caseId String
+  case   Case   @relation(fields: [caseId], references: [id])
+
+  originalName          String
+  storedPath            String?
+  mimeType              String?
+  sizeBytes             Int?
+  sha256Hash            String
+  evidenceType          String
+  status                String  @default("REGISTERED")
+  registeredBlockHeight Int?
+  registeredTxHash      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  custodyEvents CustodyEvent[]
+  verifications Verification[]
+}
+
+model CustodyEvent {
+  id         String       @id @default(cuid())
+  evidenceId String
+  evidence   EvidenceItem @relation(fields: [evidenceId], references: [id])
+
+  actorId String?
+  actor   User?   @relation(fields: [actorId], references: [id])
+
+  action            String
+  notes             String?
+  actorName         String
+  actorRole         String
+  publicKey         String?
+  signature         String?
+  previousEventHash String?
+  eventHash         String
+  blockHeight       Int?
+  txHash            String?
+
+  createdAt DateTime @default(now())
+}
+
+model LedgerBlock {
+  id           String   @id @default(cuid())
+  height       Int      @unique
+  timestamp    DateTime @default(now())
+  previousHash String
+  merkleRoot   String
+  blockHash    String   @unique
+  validator    String
+  validatorSig String?
+
+  transactions LedgerTransaction[]
+}
+
+model LedgerTransaction {
+  id      String       @id @default(cuid())
+  txHash  String       @unique
+  blockId String?
+  block   LedgerBlock? @relation(fields: [blockId], references: [id])
+
+  type            String
+  payloadJson     String
+  signerPublicKey String?
+  signature       String?
+  feeAmount       Int     @default(0)
+
+  createdAt DateTime @default(now())
+}
+
+model Verification {
+  id         String       @id @default(cuid())
+  evidenceId String
+  evidence   EvidenceItem @relation(fields: [evidenceId], references: [id])
+
+  providedHash    String
+  originalHash    String
+  matched         Boolean
+  chainValid      Boolean
+  signaturesValid Boolean
+  integrityScore  Int
+  notes           String?
+
+  createdAt DateTime @default(now())
+}
+
+model Wallet {
+  id        String   @id @default(cuid())
+  label     String
+  address   String   @unique
+  publicKey String?
+  balance   Int      @default(1000)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TokenTransaction {
+  id         String   @id @default(cuid())
+  fromWallet String?
+  toWallet   String?
+  amount     Int
+  type       String
+  reason     String?
+  createdAt  DateTime @default(now())
+}
