@@ -144,6 +144,23 @@ running the seed route. Do not reuse this password outside local development.
 9. Export anchor.
 10. Run tamper test.
 
+## ForensicVault Shield
+
+ForensicVault Shield is available at:
+
+```text
+http://localhost:3000/guard
+```
+
+Shield is a rule-based integrity monitoring dashboard for local evidence,
+custody, verification, duplicate hash patterns, ledger health, and anchor
+readiness. Phase 1 is AI-ready, but it does not call AI APIs, external APIs, or
+automated decision systems.
+
+Shield does not replace deterministic SHA-256 verification, ledger validation,
+custody hash linkage, signature checks, or external anchor comparison. The app
+remains local-first and tamper-evident, not tamper-proof.
+
 ## Project Status
 
 Local MVP / testnet simulation.
