@@ -166,6 +166,17 @@ Acknowledgements document that an investigator reviewed a deterministic alert,
 but they do not delete the alert, change the underlying evidence, modify the
 ledger, or prove the issue is resolved.
 
+## Anchor History
+
+The `/anchors` page can save local anchor snapshots and track publication URLs
+or notes for externally published anchor values. Shield compares the current
+ledger tip and ledger root against the latest saved anchor snapshot.
+
+Mismatches require review, but they do not automatically prove tampering. They
+may reflect local database rewrite, restore from backup, corruption, tamper-test
+activity, or normal ledger growth after the snapshot. This remains local-first
+and does not add real blockchain integration or an external timestamping API.
+
 ## Project Status
 
 Local MVP / testnet simulation.

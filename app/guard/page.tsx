@@ -263,6 +263,7 @@ export default async function GuardPage() {
   const custodyAlerts = alertsForCategory(scan.alerts, "custody");
   const ledgerAlerts = alertsForCategory(scan.alerts, "ledger");
   const duplicateAlerts = alertsForCategory(scan.alerts, "duplicates");
+  const anchorAlerts = alertsForCategory(scan.alerts, "anchors");
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-10">
@@ -474,6 +475,42 @@ export default async function GuardPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+      </section>
+
+      <section className="mb-10">
+        <h2 className="mb-4 text-sm font-medium tracking-wide text-slate-300 uppercase">
+          Anchor Integrity
+        </h2>
+        <div className="mb-4 grid gap-4 md:grid-cols-3">
+          <SummaryCard
+            label="Saved Anchor Count"
+            value={scan.metrics.savedAnchorCount}
+          />
+          <SummaryCard
+            label="Latest Saved Anchor Height"
+            value={scan.metrics.latestSavedAnchorHeight ?? "—"}
+          />
+          <SummaryCard
+            label="Latest Comparison Status"
+            value={scan.metrics.latestAnchorComparisonStatus.replaceAll("_", " ")}
+            detail={
+              scan.metrics.latestAnchorMatchesCurrent
+                ? "Current ledger matches latest saved anchor"
+                : "Requires review"
+            }
+          />
+        </div>
+        {anchorAlerts.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-slate-700 bg-slate-900/30 px-6 py-8 text-sm text-slate-400">
+            No anchor integrity alerts detected.
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {anchorAlerts.map((alert) => (
+              <AlertCard key={alert.id} alert={alert} />
+            ))}
           </div>
         )}
       </section>

@@ -3,6 +3,7 @@ import type {
   ShieldDuplicateGroup,
   ShieldSeverity,
 } from "@/lib/shield/types";
+import type { AnchorComparisonResult } from "@/lib/anchors/history";
 
 type EvidenceForRule = {
   id: string;
@@ -331,6 +332,101 @@ export function tamperBackupAlerts(fileCount: number): ShieldAlert[] {
       reason: `${fileCount} file(s) found in storage/tamper-test-backups.`,
       action:
         "Run ledger validation and restore from tamper-test backup if this was caused by a controlled test.",
+    }),
+  ];
+}
+
+export function anchorAlerts(input: {
+  savedAnchorCount: number;
+  latestSavedAnchorHeight: number | null;
+  latestComparison: AnchorComparisonResult;
+}): ShieldAlert[] {
+  const { savedAnchorCount, latestSavedAnchorHeight, latestComparison } = input;
+
+  if (savedAnchorCount === 0) {
+    return [
+      createAlert({
+        id: "anchor-history-empty",
+        severity: "INFO",
+        category: "anchors",
+        title: "No saved anchor history",
+        description: "No local anchor snapshots have been saved yet.",
+        reference: "Anchor History",
+        reason: "AnchorRecord count is 0.",
+        action: "Save an anchor snapshot after important ledger changes.",
+      }),
+    ];
+  }
+
+  if (latestComparison.matches) {
+    return [
+      createAlert({
+        id: "anchor-latest-matches-current",
+        severity: "INFO",
+        category: "anchors",
+        title: "Latest saved anchor matches current ledger",
+        description:
+          "The latest saved anchor has the same latestBlockHash and ledgerRoot as the current ledger.",
+        reference: `Saved height ${latestSavedAnchorHeight ?? "N/A"}`,
+        reason: latestComparison.reason,
+        action: "Continue exporting anchors after important ledger changes.",
+      }),
+    ];
+  }
+
+  if (
+    latestComparison.currentLatestBlockHeight !== null &&
+    latestComparison.savedLatestBlockHeight !== null &&
+    latestComparison.currentLatestBlockHeight > latestComparison.savedLatestBlockHeight
+  ) {
+    return [
+      createAlert({
+        id: "anchor-current-ledger-ahead",
+        severity: "MEDIUM",
+        category: "anchors",
+        title: "Current ledger has changed since latest saved anchor",
+        description:
+          "The current ledger height is greater than the latest saved anchor height and anchor values differ.",
+        reference: `Current height ${latestComparison.currentLatestBlockHeight}; saved height ${latestComparison.savedLatestBlockHeight}`,
+        reason: latestComparison.reason,
+        action:
+          "Save a new anchor snapshot and publish it externally if this ledger growth is expected.",
+      }),
+    ];
+  }
+
+  if (
+    latestComparison.currentLatestBlockHeight !== null &&
+    latestComparison.savedLatestBlockHeight !== null &&
+    latestComparison.currentLatestBlockHeight < latestComparison.savedLatestBlockHeight
+  ) {
+    return [
+      createAlert({
+        id: "anchor-current-ledger-behind",
+        severity: "HIGH",
+        category: "anchors",
+        title: "Current ledger is behind saved anchor",
+        description:
+          "The current ledger height is lower than a previously saved anchor snapshot.",
+        reference: `Current height ${latestComparison.currentLatestBlockHeight}; saved height ${latestComparison.savedLatestBlockHeight}`,
+        reason: latestComparison.reason,
+        action: "Review whether the database was restored, replaced, or rewritten.",
+      }),
+    ];
+  }
+
+  return [
+    createAlert({
+      id: "anchor-same-height-mismatch",
+      severity: "HIGH",
+      category: "anchors",
+      title: "Saved anchor mismatch at same block height",
+      description:
+        "The latest saved anchor height matches the current ledger height, but latestBlockHash or ledgerRoot differs.",
+      reference: `Saved height ${latestSavedAnchorHeight ?? "N/A"}`,
+      reason: latestComparison.reason,
+      action:
+        "Review for local database rewrite, restore, corruption, or tamper-test activity.",
     }),
   ];
 }
