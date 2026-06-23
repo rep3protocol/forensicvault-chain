@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { getDuplicateCountsByHashes } from "@/lib/evidence/duplicates";
 import { prisma } from "@/lib/prisma";
 
 function shortHash(hash?: string | null) {
@@ -24,6 +25,10 @@ export default async function ReportsPage() {
       custodyEvents: true,
     },
   });
+  const duplicateCounts = await getDuplicateCountsByHashes(
+    evidenceItems.map((item) => item.sha256Hash),
+  );
+  const hasDuplicateHash = (hash: string) => (duplicateCounts.get(hash) ?? 0) > 1;
 
   return (
     <main className="mx-auto max-w-7xl px-6 py-10 text-slate-100">
@@ -68,7 +73,16 @@ export default async function ReportsPage() {
                       <td className="py-3 pr-4">{item.originalName}</td>
                       <td className="py-3 pr-4">{item.case.title}</td>
                       <td className="py-3 pr-4">{item.evidenceType}</td>
-                      <td className="py-3 pr-4 font-mono">{shortHash(item.sha256Hash)}</td>
+                      <td className="py-3 pr-4">
+                        <div className="flex flex-col gap-1">
+                          <span className="font-mono">{shortHash(item.sha256Hash)}</span>
+                          {hasDuplicateHash(item.sha256Hash) && (
+                            <span className="w-fit rounded border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-200">
+                              Duplicate hash
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td className="py-3 pr-4">{item.status}</td>
                       <td className="py-3 pr-4">{item.registeredBlockHeight ?? "Pending"}</td>
                       <td className="py-3 pr-4">

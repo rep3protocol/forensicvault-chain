@@ -5,6 +5,7 @@ import path from "node:path";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { sha256Buffer } from "@/lib/crypto/hash";
+import { findDuplicateEvidenceByHash } from "@/lib/evidence/duplicates";
 import { createLedgerBlock } from "@/lib/ledger/createBlock";
 import { prisma } from "@/lib/prisma";
 import {
@@ -75,10 +76,7 @@ export async function registerEvidence(caseId: string, formData: FormData) {
   const absolutePath = path.join(STORAGE_DIR, storedFilename);
   const storedPath = path.join("storage", "evidence", storedFilename);
 
-  const existingDuplicates = await prisma.evidenceItem.findMany({
-    where: { caseId, sha256Hash },
-    select: { id: true },
-  });
+  const existingDuplicates = await findDuplicateEvidenceByHash(sha256Hash);
 
   await mkdir(STORAGE_DIR, { recursive: true });
   await writeFile(absolutePath, buffer);
@@ -118,7 +116,7 @@ export async function registerEvidence(caseId: string, formData: FormData) {
             ? {
                 duplicateDetected: true,
                 duplicateEvidenceIds: existingDuplicates.map((item) => item.id),
-                duplicateCount: existingDuplicates.length,
+                duplicateCount: existingDuplicates.length + 1,
               }
             : {}),
         },
@@ -156,6 +154,7 @@ export async function registerEvidence(caseId: string, formData: FormData) {
 
   revalidatePath(`/cases/${caseId}`);
   revalidatePath("/cases");
+  revalidatePath("/reports");
   revalidatePath("/");
   revalidatePath("/ledger");
   revalidatePath("/wallet");

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getDuplicateEvidenceForItem } from "@/lib/evidence/duplicates";
 import { prisma } from "@/lib/prisma";
 import { addCustodyEvent } from "./actions";
 
@@ -47,6 +48,7 @@ export default async function EvidenceDetailPage({
 
   if (!evidence) notFound();
 
+  const duplicateInfo = await getDuplicateEvidenceForItem(evidence.id);
   const latestVerification = evidence.verifications[0];
   const isCustodyValid = custodyChainValid(
     evidence.registeredTxHash,
@@ -109,6 +111,72 @@ export default async function EvidenceDetailPage({
           </div>
         </div>
       </section>
+
+      {duplicateInfo && duplicateInfo.duplicates.length > 0 && (
+        <section className="mb-8 rounded-xl border border-amber-500/50 bg-amber-500/10 p-6">
+          <h2 className="mb-3 text-lg font-semibold text-amber-200">
+            Duplicate SHA-256 Detected
+          </h2>
+          <p className="mb-5 text-sm leading-relaxed text-amber-100/90">
+            This evidence has the same SHA-256 hash as other registered evidence.
+            This means the file content is identical, even if filenames or upload
+            times differ.
+          </p>
+
+          <dl className="mb-5 grid gap-4 md:grid-cols-2">
+            <div className="md:col-span-2">
+              <dt className="text-xs uppercase text-amber-200/80">
+                Current SHA-256 Hash
+              </dt>
+              <dd className="break-all font-mono text-sm text-amber-50">
+                {duplicateInfo.sha256Hash}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs uppercase text-amber-200/80">
+                Duplicate Count
+              </dt>
+              <dd className="text-amber-50">{duplicateInfo.duplicateCount}</dd>
+            </div>
+          </dl>
+
+          <div className="overflow-x-auto rounded-lg border border-amber-500/30">
+            <table className="w-full min-w-[44rem] text-left text-sm">
+              <thead className="border-b border-amber-500/30 bg-amber-950/30 text-amber-100">
+                <tr>
+                  <th className="px-4 py-3 font-medium">Original Filename</th>
+                  <th className="px-4 py-3 font-medium">Case</th>
+                  <th className="px-4 py-3 font-medium">Created</th>
+                  <th className="px-4 py-3 font-medium"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-amber-500/20">
+                {duplicateInfo.duplicates.map((duplicate) => (
+                  <tr key={duplicate.id}>
+                    <td className="px-4 py-3 text-amber-50">
+                      {duplicate.originalName}
+                    </td>
+                    <td className="px-4 py-3 text-amber-100/80">
+                      {duplicate.case.title}
+                    </td>
+                    <td className="px-4 py-3 text-amber-100/80">
+                      {duplicate.createdAt.toLocaleString()}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Link
+                        href={`/evidence/${duplicate.id}`}
+                        className="text-amber-100 underline-offset-4 hover:underline"
+                      >
+                        Open Evidence →
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       <section className="mb-8 rounded-xl border border-slate-700 bg-slate-900/70 p-6">
         <h2 className="mb-4 text-lg font-semibold">Latest Verification</h2>

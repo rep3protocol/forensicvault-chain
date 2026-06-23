@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { TestnetWarning } from "@/components/TestnetWarning";
+import { getDuplicateCountsByHashes } from "@/lib/evidence/duplicates";
 import { shortenHash } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 
@@ -25,15 +26,10 @@ export default async function CaseDetailPage({ params }: CaseDetailPageProps) {
     notFound();
   }
 
-  const hashCounts = new Map<string, number>();
-  for (const item of caseItem.evidence) {
-    hashCounts.set(
-      item.sha256Hash,
-      (hashCounts.get(item.sha256Hash) ?? 0) + 1,
-    );
-  }
-
-  const hasDuplicateHash = (hash: string) => (hashCounts.get(hash) ?? 0) > 1;
+  const duplicateCounts = await getDuplicateCountsByHashes(
+    caseItem.evidence.map((item) => item.sha256Hash),
+  );
+  const hasDuplicateHash = (hash: string) => (duplicateCounts.get(hash) ?? 0) > 1;
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-10">
@@ -120,6 +116,11 @@ export default async function CaseDetailPage({ params }: CaseDetailPageProps) {
         <h2 className="mb-4 text-sm font-medium tracking-wide text-slate-300 uppercase">
           Evidence ({caseItem.evidence.length})
         </h2>
+        {caseItem.evidence.length > 0 && (
+          <p className="mb-4 text-sm text-slate-400">
+            Identical SHA-256 means identical file content, even if filenames differ.
+          </p>
+        )}
         {caseItem.evidence.length === 0 ? (
           <div className="rounded-lg border border-dashed border-slate-700 bg-slate-900/30 px-6 py-12 text-center">
             <p className="text-sm text-slate-400">
@@ -162,8 +163,13 @@ export default async function CaseDetailPage({ params }: CaseDetailPageProps) {
               <tbody className="divide-y divide-slate-800 bg-slate-900/30">
                 {caseItem.evidence.map((item) => (
                   <tr key={item.id}>
-                    <td className="px-4 py-3 font-medium text-slate-100">
-                      {item.originalName}
+                    <td className="px-4 py-3 font-medium">
+                      <Link
+                        href={`/evidence/${item.id}`}
+                        className="text-slate-100 hover:text-cyan-300"
+                      >
+                        {item.originalName}
+                      </Link>
                     </td>
                     <td className="px-4 py-3 text-slate-400">
                       {item.evidenceType}
@@ -183,12 +189,6 @@ export default async function CaseDetailPage({ params }: CaseDetailPageProps) {
                             </span>
                           )}
                         </div>
-                        {hasDuplicateHash(item.sha256Hash) && (
-                          <p className="text-xs text-slate-500">
-                            Same SHA-256 means the file content matches another
-                            registered item.
-                          </p>
-                        )}
                       </div>
                     </td>
                     <td className="px-4 py-3">

@@ -1,5 +1,6 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { NextResponse } from "next/server";
+import { getDuplicateEvidenceForItem } from "@/lib/evidence/duplicates";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -60,6 +61,8 @@ export async function GET(
     return NextResponse.json({ error: "Evidence not found." }, { status: 404 });
   }
 
+  const duplicateInfo = await getDuplicateEvidenceForItem(evidence.id);
+  const duplicateDetected = (duplicateInfo?.duplicates.length ?? 0) > 0;
   const latestVerification = evidence.verifications[0];
 
   const registrationBlock =
@@ -229,7 +232,22 @@ export async function GET(
   longField("SHA-256", evidence.sha256Hash);
   field("Created", formatDate(evidence.createdAt));
 
-  section("3. Registration Ledger Reference");
+  section("3. Duplicate Hash Review");
+  field("Duplicate SHA-256 Detected", yesNo(duplicateDetected));
+  field("Duplicate Count", duplicateDetected ? duplicateInfo?.duplicateCount : 0);
+  if (duplicateDetected) {
+    longField(
+      "Matching Evidence",
+      duplicateInfo?.duplicates
+        .map((duplicate) => `${duplicate.originalName} (${duplicate.id})`)
+        .join(", ") ?? "N/A",
+    );
+  } else {
+    field("Matching Evidence", "No matching evidence found.");
+  }
+  drawWrapped("Identical SHA-256 hashes indicate identical file content.", 9);
+
+  section("4. Registration Ledger Reference");
   field("Registered Block Height", evidence.registeredBlockHeight ?? "N/A");
   longField("Registered Transaction Hash", evidence.registeredTxHash ?? "N/A");
   field("Transaction Type", registrationTransaction?.type ?? "N/A");
@@ -238,7 +256,7 @@ export async function GET(
   field("Registration Timestamp", formatDate(registrationBlock?.timestamp));
   field("Validator", registrationBlock?.validator ?? "N/A");
 
-  section("4. Latest Verification");
+  section("5. Latest Verification");
 
   if (latestVerification) {
     field("Result", latestVerification.matched ? "MATCH" : "FAILED");
@@ -254,13 +272,13 @@ export async function GET(
     field("Verification", "No verification has been recorded for this evidence item.");
   }
 
-  section("5. Custody Chain");
+  section("6. Custody Chain");
   field(
     "Custody Chain Status",
     custodyStatus(evidence.registeredTxHash, evidence.custodyEvents)
   );
 
-  section("6. Custody Timeline");
+  section("7. Custody Timeline");
 
   if (evidence.custodyEvents.length === 0) {
     field("Custody Events", "No custody events have been recorded.");

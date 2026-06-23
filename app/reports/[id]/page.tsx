@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { PrintButton } from "@/components/PrintButton";
+import { getDuplicateEvidenceForItem } from "@/lib/evidence/duplicates";
 
 function formatDate(value?: Date | null) {
   if (!value) return "N/A";
@@ -54,6 +55,8 @@ export default async function ReportDetailPage({
 
   if (!evidence) notFound();
 
+  const duplicateInfo = await getDuplicateEvidenceForItem(evidence.id);
+  const duplicateDetected = (duplicateInfo?.duplicates.length ?? 0) > 0;
   const latestVerification = evidence.verifications[0];
 
   const registrationBlock =
@@ -147,6 +150,60 @@ export default async function ReportDetailPage({
           <div className="md:col-span-2"><dt className="text-sm text-slate-400 print:text-black">SHA-256</dt><dd className="break-all font-mono text-sm">{evidence.sha256Hash}</dd></div>
           <div><dt className="text-sm text-slate-400 print:text-black">Created</dt><dd>{formatDate(evidence.createdAt)}</dd></div>
         </dl>
+      </section>
+
+      <section
+        className={`print-break mb-6 rounded-xl border p-6 ${
+          duplicateDetected
+            ? "border-amber-500/50 bg-amber-500/10"
+            : "border-slate-700 bg-slate-900/70"
+        }`}
+      >
+        <h2 className="mb-4 text-2xl font-semibold">Duplicate Hash Review</h2>
+        <dl className="grid gap-4 md:grid-cols-2">
+          <div>
+            <dt className="text-sm text-slate-400 print:text-black">
+              Duplicate Detected
+            </dt>
+            <dd>{yesNo(duplicateDetected)}</dd>
+          </div>
+          <div>
+            <dt className="text-sm text-slate-400 print:text-black">
+              Duplicate Count
+            </dt>
+            <dd>{duplicateDetected ? duplicateInfo?.duplicateCount : 0}</dd>
+          </div>
+          <div className="md:col-span-2">
+            <dt className="text-sm text-slate-400 print:text-black">
+              Matching Evidence
+            </dt>
+            <dd>
+              {duplicateDetected ? (
+                <ul className="mt-2 space-y-2">
+                  {duplicateInfo?.duplicates.map((duplicate) => (
+                    <li key={duplicate.id}>
+                      <Link
+                        href={`/evidence/${duplicate.id}`}
+                        className="text-cyan-300 hover:text-cyan-200 print:text-black"
+                      >
+                        {duplicate.originalName}
+                      </Link>
+                      <span className="break-all font-mono text-sm text-slate-400 print:text-black">
+                        {" "}
+                        ({duplicate.id})
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                "No matching evidence found."
+              )}
+            </dd>
+          </div>
+        </dl>
+        <p className="mt-4 text-sm text-slate-300 print:text-black">
+          This is not proof of tampering; it is proof of identical file content.
+        </p>
       </section>
 
       <section className="print-break mb-6 rounded-xl border border-slate-700 bg-slate-900/70 p-6">
