@@ -99,12 +99,26 @@ export default async function CaseDetailPage({ params }: CaseDetailPageProps) {
           <h2 className="mb-4 text-sm font-medium tracking-wide text-slate-300 uppercase">
             Actions
           </h2>
-          <Link
-            href={`/cases/${caseItem.id}/evidence/new`}
-            className="block w-full rounded bg-cyan-700 px-4 py-2 text-center text-sm font-medium text-white transition-colors hover:bg-cyan-600"
-          >
-            Add Evidence
-          </Link>
+          <div className="space-y-3">
+            <Link
+              href={`/cases/${caseItem.id}/evidence/new`}
+              className="block w-full rounded bg-cyan-700 px-4 py-2 text-center text-sm font-medium text-white transition-colors hover:bg-cyan-600"
+            >
+              Add Evidence
+            </Link>
+            <Link
+              href={`/cases/${caseItem.id}/packet`}
+              className="block w-full rounded border border-slate-700 px-4 py-2 text-center text-sm font-medium text-slate-100 transition-colors hover:border-cyan-500 hover:text-cyan-200"
+            >
+              Open Case Packet
+            </Link>
+            <a
+              href={`/cases/${caseItem.id}/packet/download`}
+              className="block w-full rounded bg-emerald-600 px-4 py-2 text-center text-sm font-medium text-white transition-colors hover:bg-emerald-500"
+            >
+              Download Case Packet PDF
+            </a>
+          </div>
           <p className="mt-3 text-xs text-slate-500">
             Upload a file to compute SHA-256, register on the local ledger, and
             deduct 10 TEST_VAULT.
