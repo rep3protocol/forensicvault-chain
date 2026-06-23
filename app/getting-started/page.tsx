@@ -101,6 +101,12 @@ export default async function GettingStartedPage() {
 
       <section className="flex flex-wrap gap-3">
         <Link
+          href="/demo"
+          className="rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-500"
+        >
+          Open Demo Mode
+        </Link>
+        <Link
           href={progress.nextAction.href}
           className="rounded bg-cyan-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-cyan-600"
         >

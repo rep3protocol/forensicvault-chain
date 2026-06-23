@@ -5,6 +5,7 @@ import { SESSION_COOKIE_NAME } from "@/lib/auth/constants";
 const protectedPrefixes = [
   "/cases",
   "/getting-started",
+  "/demo",
   "/evidence",
   "/verify",
   "/reports",
