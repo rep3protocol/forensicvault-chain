@@ -8,7 +8,12 @@ import {
   tamperBackupAlerts,
 } from "@/lib/shield/rules";
 import { compareSeverity } from "@/lib/shield/severity";
-import { computeShieldStatus, getRecommendedActions } from "@/lib/shield/summary";
+import {
+  computeRawShieldStatus,
+  computeShieldStatus,
+  countAlertsBySeverity,
+  getRecommendedActions,
+} from "@/lib/shield/summary";
 import type { ShieldDuplicateGroup, ShieldScanResult } from "@/lib/shield/types";
 import { validateLedgerChain } from "@/lib/ledgerValidation";
 import { prisma } from "@/lib/prisma";
@@ -129,13 +134,46 @@ export async function scanShield(): Promise<ShieldScanResult> {
   ]);
 
   const duplicateGroups = getDuplicateGroups(evidenceItems);
-  const alerts = [
+  const rawAlerts = [
     ...ledgerAlerts(ledgerValidation.valid, ledgerValidation.errors),
     ...evidenceAlerts(evidenceItems),
     ...custodyAlerts(evidenceItems),
     ...duplicateAlerts(duplicateGroups),
     ...tamperBackupAlerts(tamperBackupFileCount),
   ].sort((a, b) => compareSeverity(a.severity, b.severity));
+  const activeAlertIds = rawAlerts.map((alert) => alert.id);
+  const [acknowledgements, recentEvents] = await Promise.all([
+    activeAlertIds.length > 0
+      ? prisma.shieldAlertAcknowledgement.findMany({
+          where: { alertId: { in: activeAlertIds } },
+        })
+      : [],
+    prisma.shieldEvent.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 20,
+    }),
+  ]);
+  const acknowledgementByAlertId = new Map(
+    acknowledgements.map((acknowledgement) => [
+      acknowledgement.alertId,
+      {
+        alertId: acknowledgement.alertId,
+        note: acknowledgement.note,
+        acknowledgedById: acknowledgement.acknowledgedById,
+        acknowledgedByName: acknowledgement.acknowledgedByName,
+        acknowledgedAt: acknowledgement.acknowledgedAt,
+      },
+    ]),
+  );
+  const alerts = rawAlerts
+    .map((alert) => ({
+      ...alert,
+      acknowledgement: acknowledgementByAlertId.get(alert.id),
+    }))
+    .sort((a, b) => compareSeverity(a.severity, b.severity));
+  const acknowledgedAlerts = alerts.filter((alert) => alert.acknowledgement);
+  const unacknowledgedAlerts = alerts.filter((alert) => !alert.acknowledgement);
+  const unacknowledgedCounts = countAlertsBySeverity(unacknowledgedAlerts);
 
   const metrics = {
     ledgerValid: ledgerValidation.valid,
@@ -172,16 +210,38 @@ export async function scanShield(): Promise<ShieldScanResult> {
       0,
     ),
     tamperBackupFileCount,
+    acknowledgedAlertCount: acknowledgedAlerts.length,
+    unacknowledgedCriticalAlerts: unacknowledgedCounts.CRITICAL,
+    unacknowledgedHighAlerts: unacknowledgedCounts.HIGH,
+    unacknowledgedMediumAlerts: unacknowledgedCounts.MEDIUM,
+    unacknowledgedLowAlerts: unacknowledgedCounts.LOW,
   };
-  const status = computeShieldStatus(alerts);
+  const status = computeShieldStatus(unacknowledgedAlerts);
+  const rawStatus = computeRawShieldStatus(alerts);
 
   return {
     generatedAt: new Date(),
     status,
+    rawStatus,
     metrics,
     alerts,
+    acknowledgedAlerts,
+    unacknowledgedAlerts,
+    recentEvents: recentEvents.map((event) => ({
+      id: event.id,
+      eventType: event.eventType,
+      alertId: event.alertId,
+      severity: event.severity,
+      category: event.category,
+      title: event.title,
+      description: event.description,
+      actorName: event.actorName,
+      createdAt: event.createdAt,
+    })),
     duplicateGroups,
     ledgerErrors: ledgerValidation.errors,
-    recommendedActions: getRecommendedActions(alerts, metrics),
+    recommendedActions: getRecommendedActions(unacknowledgedAlerts, metrics, {
+      hasAcknowledgedAlerts: acknowledgedAlerts.length > 0,
+    }),
   };
 }

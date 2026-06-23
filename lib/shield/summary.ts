@@ -10,6 +10,10 @@ export function countAlertsBySeverity(alerts: ShieldAlert[]) {
   };
 }
 
+export function countUnacknowledgedAlertsBySeverity(alerts: ShieldAlert[]) {
+  return countAlertsBySeverity(alerts.filter((alert) => !alert.acknowledgement));
+}
+
 export function computeShieldStatus(alerts: ShieldAlert[]): ShieldStatus {
   const counts = countAlertsBySeverity(alerts);
 
@@ -19,10 +23,18 @@ export function computeShieldStatus(alerts: ShieldAlert[]): ShieldStatus {
   return "CLEAR";
 }
 
-export function getRecommendedActions(alerts: ShieldAlert[], metrics: ShieldMetrics) {
+export function computeRawShieldStatus(alerts: ShieldAlert[]): ShieldStatus {
+  return computeShieldStatus(alerts);
+}
+
+export function getRecommendedActions(
+  unacknowledgedAlerts: ShieldAlert[],
+  metrics: ShieldMetrics,
+  options?: { hasAcknowledgedAlerts?: boolean },
+) {
   const actions = new Set<string>();
 
-  for (const alert of alerts) {
+  for (const alert of unacknowledgedAlerts) {
     if (alert.severity !== "INFO") {
       actions.add(alert.action);
     }
@@ -34,6 +46,10 @@ export function getRecommendedActions(alerts: ShieldAlert[], metrics: ShieldMetr
 
   if (actions.size === 0) {
     actions.add("Continue normal SHA-256 verification and external anchor exports.");
+  }
+
+  if (options?.hasAcknowledgedAlerts) {
+    actions.add("Review acknowledged Shield alerts during case closeout.");
   }
 
   return [...actions];

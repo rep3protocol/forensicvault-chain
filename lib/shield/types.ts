@@ -19,6 +19,27 @@ export type ShieldAlert = {
   reference?: string;
   reason: string;
   action: string;
+  acknowledgement?: ShieldAlertAcknowledgementSummary;
+};
+
+export type ShieldAlertAcknowledgementSummary = {
+  alertId: string;
+  note: string | null;
+  acknowledgedById: string;
+  acknowledgedByName: string;
+  acknowledgedAt: Date;
+};
+
+export type ShieldEventSummary = {
+  id: string;
+  eventType: string;
+  alertId: string | null;
+  severity: string | null;
+  category: string | null;
+  title: string;
+  description: string;
+  actorName: string | null;
+  createdAt: Date;
 };
 
 export type ShieldDuplicateGroup = {
@@ -46,13 +67,22 @@ export type ShieldMetrics = {
   custodyEventsWithMissingNotes: number;
   custodyEventsWithMissingHashReferences: number;
   tamperBackupFileCount: number;
+  acknowledgedAlertCount: number;
+  unacknowledgedCriticalAlerts: number;
+  unacknowledgedHighAlerts: number;
+  unacknowledgedMediumAlerts: number;
+  unacknowledgedLowAlerts: number;
 };
 
 export type ShieldScanResult = {
   generatedAt: Date;
   status: ShieldStatus;
+  rawStatus: ShieldStatus;
   metrics: ShieldMetrics;
   alerts: ShieldAlert[];
+  acknowledgedAlerts: ShieldAlert[];
+  unacknowledgedAlerts: ShieldAlert[];
+  recentEvents: ShieldEventSummary[];
   duplicateGroups: ShieldDuplicateGroup[];
   ledgerErrors: string[];
   recommendedActions: string[];

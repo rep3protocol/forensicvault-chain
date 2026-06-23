@@ -146,3 +146,33 @@ model TokenTransaction {
   reason     String?
   createdAt  DateTime @default(now())
 }
+
+model ShieldAlertAcknowledgement {
+  id                 String   @id @default(cuid())
+  alertId            String   @unique
+  alertTitle         String
+  severity           String
+  category           String
+  reference          String?
+  reason             String
+  note               String?
+  acknowledgedById   String
+  acknowledgedByName String
+  acknowledgedAt     DateTime @default(now())
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model ShieldEvent {
+  id           String   @id @default(cuid())
+  eventType    String
+  alertId      String?
+  severity     String?
+  category     String?
+  title        String
+  description  String
+  actorId      String?
+  actorName    String?
+  metadataJson String?
+  createdAt    DateTime @default(now())
+}

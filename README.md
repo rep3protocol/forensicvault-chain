@@ -161,6 +161,11 @@ Shield does not replace deterministic SHA-256 verification, ledger validation,
 custody hash linkage, signature checks, or external anchor comparison. The app
 remains local-first and tamper-evident, not tamper-proof.
 
+Shield Phase 1.1 adds alert acknowledgements and a Shield event log.
+Acknowledgements document that an investigator reviewed a deterministic alert,
+but they do not delete the alert, change the underlying evidence, modify the
+ledger, or prove the issue is resolved.
+
 ## Project Status
 
 Local MVP / testnet simulation.
