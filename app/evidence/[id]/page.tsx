@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
+import { getSignatureReadinessForEvents } from "@/lib/custody/signatureReadiness";
 import { getDuplicateEvidenceForItem } from "@/lib/evidence/duplicates";
 import { prisma } from "@/lib/prisma";
 import { FEES, TEST_VAULT_SYMBOL } from "@/lib/token/testVault";
@@ -57,6 +58,7 @@ export default async function EvidenceDetailPage({
     evidence.registeredTxHash,
     evidence.custodyEvents
   );
+  const signatureReadiness = getSignatureReadinessForEvents(evidence.custodyEvents);
 
   const custodyAction = addCustodyEvent.bind(null, evidence.id);
 
@@ -275,6 +277,51 @@ export default async function EvidenceDetailPage({
             ))}
           </div>
         )}
+      </section>
+
+      <section className="mb-8 rounded-xl border border-slate-700 bg-slate-900/70 p-6">
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">Signature Readiness</h2>
+            <p className="mt-1 text-sm leading-relaxed text-slate-400">
+              Signature readiness checks whether custody events have recorded
+              public key/signature fields. It does not prove production-grade
+              key custody.
+            </p>
+          </div>
+          <span
+            className={
+              signatureReadiness.status === "PASS"
+                ? "rounded bg-emerald-900/50 px-2.5 py-1 text-xs font-semibold text-emerald-300"
+                : signatureReadiness.status === "WARNING"
+                  ? "rounded bg-amber-900/50 px-2.5 py-1 text-xs font-semibold text-amber-300"
+                  : "rounded bg-slate-800 px-2.5 py-1 text-xs font-semibold text-slate-300"
+            }
+          >
+            {signatureReadiness.status}
+          </span>
+        </div>
+        <dl className="grid gap-4 md:grid-cols-3">
+          <div>
+            <dt className="text-xs uppercase text-slate-500">Custody Events</dt>
+            <dd className="mt-1 text-slate-200">{signatureReadiness.eventCount}</dd>
+          </div>
+          <div>
+            <dt className="text-xs uppercase text-slate-500">Missing Fields</dt>
+            <dd className="mt-1 text-slate-200">
+              {signatureReadiness.missingSignatureCount}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs uppercase text-slate-500">Placeholder Keys</dt>
+            <dd className="mt-1 text-slate-200">
+              {signatureReadiness.placeholderPublicKeyCount}
+            </dd>
+          </div>
+        </dl>
+        <p className="mt-4 text-sm leading-relaxed text-slate-300">
+          {signatureReadiness.reason}
+        </p>
       </section>
 
       <section className="rounded-xl border border-slate-700 bg-slate-900/70 p-6">

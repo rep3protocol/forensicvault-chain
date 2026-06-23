@@ -32,6 +32,15 @@ type CreateAnchorRecordInput = {
   createdByName?: string | null;
 };
 
+export type DuplicateAnchorRecordGroup = {
+  latestBlockHeight: number;
+  latestBlockHash: string;
+  ledgerRoot: string;
+  count: number;
+  recordIds: string[];
+  labels: string[];
+};
+
 function cleanOptional(value: string | null | undefined) {
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
@@ -93,6 +102,62 @@ export async function getLatestAnchorRecord() {
   return prisma.anchorRecord.findFirst({
     orderBy: { createdAt: "desc" },
   });
+}
+
+export async function findDuplicateAnchorRecordForCurrent() {
+  const anchor = await getAnchorExport();
+
+  if (
+    anchor.latestBlockHeight === null ||
+    !anchor.latestBlockHash ||
+    !anchor.ledgerRoot
+  ) {
+    return null;
+  }
+
+  return prisma.anchorRecord.findFirst({
+    where: {
+      latestBlockHeight: anchor.latestBlockHeight,
+      latestBlockHash: anchor.latestBlockHash,
+      ledgerRoot: anchor.ledgerRoot,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+export async function getDuplicateAnchorRecordGroups(): Promise<
+  DuplicateAnchorRecordGroup[]
+> {
+  const records = await prisma.anchorRecord.findMany({
+    orderBy: { createdAt: "desc" },
+  });
+  const groups = new Map<string, AnchorRecord[]>();
+
+  for (const record of records) {
+    const key = [
+      record.latestBlockHeight,
+      record.latestBlockHash,
+      record.ledgerRoot,
+    ].join(":");
+    groups.set(key, [...(groups.get(key) ?? []), record]);
+  }
+
+  return [...groups.values()]
+    .filter((recordsForGroup) => recordsForGroup.length > 1)
+    .map((recordsForGroup) => {
+      const first = recordsForGroup[0];
+
+      return {
+        latestBlockHeight: first.latestBlockHeight,
+        latestBlockHash: first.latestBlockHash,
+        ledgerRoot: first.ledgerRoot,
+        count: recordsForGroup.length,
+        recordIds: recordsForGroup.map((record) => record.id),
+        labels: recordsForGroup
+          .map((record) => record.label)
+          .filter((label): label is string => Boolean(label)),
+      };
+    });
 }
 
 function compareAnchorValues(
@@ -197,10 +262,16 @@ export async function compareCurrentAnchorToLatestRecord() {
 }
 
 export async function getAnchorHistorySummary() {
-  const [savedAnchorCount, latestRecord, latestComparison] = await Promise.all([
+  const [
+    savedAnchorCount,
+    latestRecord,
+    latestComparison,
+    duplicateAnchorRecordGroups,
+  ] = await Promise.all([
     prisma.anchorRecord.count(),
     getLatestAnchorRecord(),
     compareCurrentAnchorToLatestRecord(),
+    getDuplicateAnchorRecordGroups(),
   ]);
 
   return {
@@ -210,5 +281,7 @@ export async function getAnchorHistorySummary() {
     latestAnchorMatchesCurrent: latestComparison.matches,
     latestAnchorComparisonStatus: latestComparison.status,
     latestComparison,
+    duplicateAnchorRecordGroups,
+    duplicateAnchorRecordGroupCount: duplicateAnchorRecordGroups.length,
   };
 }

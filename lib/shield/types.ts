@@ -8,7 +8,8 @@ export type ShieldAlertCategory =
   | "ledger"
   | "duplicates"
   | "storage"
-  | "anchors";
+  | "anchors"
+  | "cases";
 
 export type ShieldAlert = {
   id: string;
@@ -76,6 +77,9 @@ export type ShieldMetrics = {
   latestSavedAnchorHeight: number | null;
   latestAnchorMatchesCurrent: boolean;
   latestAnchorComparisonStatus: string;
+  duplicateAnchorRecordGroups: number;
+  caseReadinessWarningCount: number;
+  signatureReadinessWarningCount: number;
 };
 
 export type ShieldScanResult = {

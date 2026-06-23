@@ -2,7 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { createAnchorRecord } from "@/lib/anchors/history";
+import {
+  createAnchorRecord,
+  findDuplicateAnchorRecordForCurrent,
+} from "@/lib/anchors/history";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 
@@ -28,9 +31,24 @@ function requiredString(formData: FormData, key: string) {
 
 export async function saveCurrentAnchorRecord(formData: FormData) {
   const user = await requireCurrentUser();
+  const label = optionalString(formData, "label");
+  const duplicate = await findDuplicateAnchorRecordForCurrent();
+
+  if (duplicate) {
+    if (label) {
+      await prisma.anchorRecord.update({
+        where: { id: duplicate.id },
+        data: { label },
+      });
+    }
+
+    revalidatePath("/anchors");
+    revalidatePath("/guard");
+    redirect(`/anchors?duplicateAnchor=1&existingAnchorId=${duplicate.id}`);
+  }
 
   await createAnchorRecord({
-    label: optionalString(formData, "label"),
+    label,
     createdById: user.id,
     createdByName: user.name,
   });

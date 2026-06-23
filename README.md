@@ -18,16 +18,21 @@ This project does not claim to provide a real blockchain, real cryptocurrency, l
 - Demo mode
 - First-run helper
 - Case creation
+- Case readiness checklist
 - Evidence upload
+- Evidence inventory search and filtering
 - SHA-256 hashing
 - Duplicate hash warning
 - Evidence verification
 - Chain-of-custody events
+- Custody signature readiness indicator
 - Local hash-linked ledger
 - Tamper test page
 - Individual PDF evidence reports
 - Case packet PDF export
 - External anchor JSON/text export
+- Local anchor history with duplicate snapshot guard
+- ForensicVault Shield rule-based monitoring
 - Fake TEST_VAULT local fee history
 
 ## Screenshots
@@ -144,6 +149,31 @@ running the seed route. Do not reuse this password outside local development.
 9. Export anchor.
 10. Run tamper test.
 
+Demo mode is for screenshots and testing only. Demo actions create local test
+data, and resetting demo data should not be treated as deleting real evidence.
+The ledger may retain historical demo transactions when append-only behavior is
+preserved.
+
+## Evidence Inventory
+
+The `/evidence` route provides read-only inventory search and filtering by
+filename, partial SHA-256, case, status, evidence type, duplicate-only,
+unverified-only, and failed-verification-only views. It does not create or
+modify evidence records.
+
+## Case Readiness
+
+Case detail pages include an advisory readiness checklist for verification
+coverage, failed verifications, ledger registration references, custody events,
+custody hash linkage, duplicate hashes, anchor status, packet export readiness,
+and custody signature readiness. The checklist does not block case packet
+export.
+
+Signature readiness checks whether custody events have recorded public
+key/signature fields. It does not prove production-grade key custody. A future
+version should generate local signing keys, sign custody events, verify
+signatures, and export public key fingerprints.
+
 ## ForensicVault Shield
 
 ForensicVault Shield is available at:
@@ -172,6 +202,11 @@ The `/anchors` page can save local anchor snapshots and track publication URLs
 or notes for externally published anchor values. Shield compares the current
 ledger tip and ledger root against the latest saved anchor snapshot.
 
+The app prevents saving an identical anchor snapshot by default. If a matching
+snapshot already exists for the current latestBlockHeight, latestBlockHash, and
+ledgerRoot, the existing snapshot can be labeled or annotated instead of
+creating another duplicate row.
+
 Mismatches require review, but they do not automatically prove tampering. They
 may reflect local database rewrite, restore from backup, corruption, tamper-test
 activity, or normal ledger growth after the snapshot. This remains local-first
@@ -183,6 +218,11 @@ Local MVP / testnet simulation.
 
 ForensicVault Chain is intended for local development, demos, training, and exploration of forensic integrity workflows. It does not publish to a real blockchain or timestamp authority automatically.
 
+Current release status: local-first portfolio MVP / testnet simulation. It is
+tamper-evident, not tamper-proof; it has no real blockchain, no real
+cryptocurrency, no legal admissibility guarantee, and no production-grade
+security claim.
+
 ## Roadmap
 
 - Better production auth
@@ -192,7 +232,7 @@ ForensicVault Chain is intended for local development, demos, training, and expl
 - GitHub/Gist anchoring
 - Audit log export
 - Role-based permissions
-- Evidence search/filtering
+- Stronger evidence inventory workflows
 - Deployment hardening
 ## License
 
