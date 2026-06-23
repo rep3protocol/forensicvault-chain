@@ -9,6 +9,7 @@ const protectedPrefixes = [
   "/reports",
   "/wallet",
   "/ledger",
+  "/anchors",
   "/tamper-test",
 ];
 

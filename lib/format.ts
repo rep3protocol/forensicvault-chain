@@ -13,3 +13,11 @@ export function shortenHash(
 
   return `${value.slice(0, prefix)}…${value.slice(-suffix)}`;
 }
+
+export function formatHash(
+  value: string | null | undefined,
+  start = 12,
+  end = 8,
+): string {
+  return shortenHash(value, start, end);
+}
