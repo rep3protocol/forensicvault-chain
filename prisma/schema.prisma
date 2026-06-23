@@ -176,3 +176,26 @@ model ShieldEvent {
   metadataJson String?
   createdAt    DateTime @default(now())
 }
+
+model AnchorRecord {
+  id                      String   @id @default(cuid())
+  label                   String?
+  chainId                 String
+  environment             String
+  latestBlockHeight       Int
+  latestBlockHash         String
+  ledgerRoot              String
+  totalLedgerBlocks       Int
+  evidenceCount           Int
+  custodyEventCount       Int
+  verificationCount       Int
+  caseCount               Int
+  duplicateHashGroupCount Int
+  exportedJson            String
+  publishedUrl            String?
+  publicationNotes        String?
+  createdById             String?
+  createdByName           String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}

@@ -72,6 +72,10 @@ export type ShieldMetrics = {
   unacknowledgedHighAlerts: number;
   unacknowledgedMediumAlerts: number;
   unacknowledgedLowAlerts: number;
+  savedAnchorCount: number;
+  latestSavedAnchorHeight: number | null;
+  latestAnchorMatchesCurrent: boolean;
+  latestAnchorComparisonStatus: string;
 };
 
 export type ShieldScanResult = {

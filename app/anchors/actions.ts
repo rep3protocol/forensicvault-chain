@@ -1,0 +1,58 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { createAnchorRecord } from "@/lib/anchors/history";
+import { requireCurrentUser } from "@/lib/auth/session";
+import { prisma } from "@/lib/prisma";
+
+function stringValue(formData: FormData, key: string) {
+  const value = formData.get(key);
+  return typeof value === "string" ? value : "";
+}
+
+function optionalString(formData: FormData, key: string) {
+  const value = stringValue(formData, key).trim();
+  return value.length > 0 ? value : null;
+}
+
+function requiredString(formData: FormData, key: string) {
+  const value = stringValue(formData, key).trim();
+
+  if (!value) {
+    throw new Error(`Missing required anchor field: ${key}`);
+  }
+
+  return value;
+}
+
+export async function saveCurrentAnchorRecord(formData: FormData) {
+  const user = await requireCurrentUser();
+
+  await createAnchorRecord({
+    label: optionalString(formData, "label"),
+    createdById: user.id,
+    createdByName: user.name,
+  });
+
+  revalidatePath("/anchors");
+  revalidatePath("/guard");
+  redirect("/anchors");
+}
+
+export async function updateAnchorPublication(formData: FormData) {
+  await requireCurrentUser();
+  const id = requiredString(formData, "id");
+
+  await prisma.anchorRecord.update({
+    where: { id },
+    data: {
+      publishedUrl: optionalString(formData, "publishedUrl"),
+      publicationNotes: optionalString(formData, "publicationNotes"),
+    },
+  });
+
+  revalidatePath("/anchors");
+  revalidatePath("/guard");
+  redirect("/anchors");
+}

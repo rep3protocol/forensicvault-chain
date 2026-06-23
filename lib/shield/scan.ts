@@ -1,12 +1,14 @@
 import { readdir } from "node:fs/promises";
 import path from "node:path";
 import {
+  anchorAlerts,
   custodyAlerts,
   duplicateAlerts,
   evidenceAlerts,
   ledgerAlerts,
   tamperBackupAlerts,
 } from "@/lib/shield/rules";
+import { getAnchorHistorySummary } from "@/lib/anchors/history";
 import { compareSeverity } from "@/lib/shield/severity";
 import {
   computeRawShieldStatus,
@@ -86,6 +88,7 @@ export async function scanShield(): Promise<ShieldScanResult> {
     failedVerifications,
     evidenceItems,
     tamperBackupFileCount,
+    anchorHistorySummary,
   ] = await Promise.all([
     validateLedgerChain(),
     prisma.ledgerBlock.findFirst({ orderBy: { height: "desc" } }),
@@ -131,6 +134,7 @@ export async function scanShield(): Promise<ShieldScanResult> {
       },
     }),
     countTamperBackupFiles(),
+    getAnchorHistorySummary(),
   ]);
 
   const duplicateGroups = getDuplicateGroups(evidenceItems);
@@ -140,6 +144,11 @@ export async function scanShield(): Promise<ShieldScanResult> {
     ...custodyAlerts(evidenceItems),
     ...duplicateAlerts(duplicateGroups),
     ...tamperBackupAlerts(tamperBackupFileCount),
+    ...anchorAlerts({
+      savedAnchorCount: anchorHistorySummary.savedAnchorCount,
+      latestSavedAnchorHeight: anchorHistorySummary.latestSavedAnchorHeight,
+      latestComparison: anchorHistorySummary.latestComparison,
+    }),
   ].sort((a, b) => compareSeverity(a.severity, b.severity));
   const activeAlertIds = rawAlerts.map((alert) => alert.id);
   const [acknowledgements, recentEvents] = await Promise.all([
@@ -215,6 +224,10 @@ export async function scanShield(): Promise<ShieldScanResult> {
     unacknowledgedHighAlerts: unacknowledgedCounts.HIGH,
     unacknowledgedMediumAlerts: unacknowledgedCounts.MEDIUM,
     unacknowledgedLowAlerts: unacknowledgedCounts.LOW,
+    savedAnchorCount: anchorHistorySummary.savedAnchorCount,
+    latestSavedAnchorHeight: anchorHistorySummary.latestSavedAnchorHeight,
+    latestAnchorMatchesCurrent: anchorHistorySummary.latestAnchorMatchesCurrent,
+    latestAnchorComparisonStatus: anchorHistorySummary.latestAnchorComparisonStatus,
   };
   const status = computeShieldStatus(unacknowledgedAlerts);
   const rawStatus = computeRawShieldStatus(alerts);
