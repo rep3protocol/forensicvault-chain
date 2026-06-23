@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth/session";
 import { getDuplicateEvidenceForItem } from "@/lib/evidence/duplicates";
 import { prisma } from "@/lib/prisma";
 import { FEES, TEST_VAULT_SYMBOL } from "@/lib/token/testVault";
@@ -50,6 +51,7 @@ export default async function EvidenceDetailPage({
   if (!evidence) notFound();
 
   const duplicateInfo = await getDuplicateEvidenceForItem(evidence.id);
+  const currentUser = await getCurrentUser();
   const latestVerification = evidence.verifications[0];
   const isCustodyValid = custodyChainValid(
     evidence.registeredTxHash,
@@ -300,12 +302,12 @@ export default async function EvidenceDetailPage({
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <label className="mb-2 block text-sm font-medium">Actor Name</label>
-              <input name="actorName" required defaultValue="Local Investigator" className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2" />
+              <input name="actorName" defaultValue={currentUser?.name ?? "Local Investigator"} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2" />
             </div>
 
             <div>
               <label className="mb-2 block text-sm font-medium">Actor Role</label>
-              <input name="actorRole" required defaultValue="Investigator" className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2" />
+              <input name="actorRole" defaultValue={currentUser?.role ?? "Investigator"} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2" />
             </div>
           </div>
 

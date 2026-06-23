@@ -1,16 +1,20 @@
 import Link from "next/link";
 import { TestnetWarning } from "@/components/TestnetWarning";
+import { getCurrentUser } from "@/lib/auth/session";
+import { ensureWalletForUser } from "@/lib/auth/wallet";
 import { DEFAULT_WALLET_ADDRESS } from "@/lib/constants";
 import { prisma } from "@/lib/prisma";
 
 export default async function HomePage() {
+  const currentUser = await getCurrentUser();
+  const currentUserWallet = currentUser ? await ensureWalletForUser(currentUser) : null;
   const [
     totalCases,
     totalEvidence,
     totalCustodyEvents,
     totalLedgerBlocks,
     totalVerifications,
-    wallet,
+    defaultWallet,
     latestVerification,
   ] = await Promise.all([
     prisma.case.count(),
@@ -28,6 +32,7 @@ export default async function HomePage() {
       },
     }),
   ]);
+  const wallet = currentUserWallet ?? defaultWallet;
 
   const stats = [
     { label: "Total Cases", value: totalCases },

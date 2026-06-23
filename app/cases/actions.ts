@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth/session";
 import { DEFAULT_PUBLIC_KEY } from "@/lib/constants";
 import { prisma } from "@/lib/prisma";
 
@@ -27,7 +28,7 @@ export async function createCase(formData: FormData) {
     throw new Error("Title is required.");
   }
 
-  const owner = await getOrCreateDefaultUser();
+  const owner = (await getCurrentUser()) ?? (await getOrCreateDefaultUser());
 
   await prisma.case.create({
     data: {

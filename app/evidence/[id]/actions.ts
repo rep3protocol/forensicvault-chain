@@ -1,12 +1,12 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth/session";
+import { getSignerPublicKey, getWalletForUserOrDefault } from "@/lib/auth/wallet";
 import { sha256String, stableJson } from "@/lib/crypto/hash";
 import { createLedgerBlock } from "@/lib/ledger/createBlock";
+import { prisma } from "@/lib/prisma";
 
-const DEFAULT_WALLET_ADDRESS = "fv-wallet-local-default";
-const DEFAULT_PUBLIC_KEY = "LOCAL_DEV_PUBLIC_KEY";
 const LOCAL_VALIDATOR = "LOCAL_DEV_VALIDATOR";
 const CUSTODY_FEE = 3;
 
@@ -20,8 +20,9 @@ export async function addCustodyEvent(evidenceId: string, formData: FormData) {
   }
 
   const action = String(formData.get("action") || "").trim();
-  const actorName = String(formData.get("actorName") || "").trim();
-  const actorRole = String(formData.get("actorRole") || "").trim();
+  const currentUser = await getCurrentUser();
+  const actorName = String(formData.get("actorName") || "").trim() || currentUser?.name || "";
+  const actorRole = String(formData.get("actorRole") || "").trim() || currentUser?.role || "";
   const notes = String(formData.get("notes") || "").trim();
 
   if (!action) throw new Error("Custody action is required.");
@@ -50,9 +51,7 @@ export async function addCustodyEvent(evidenceId: string, formData: FormData) {
 
   const eventHash = sha256String(stableJson(custodyPayload));
 
-  const wallet = await prisma.wallet.findUnique({
-    where: { address: DEFAULT_WALLET_ADDRESS },
-  });
+  const wallet = await getWalletForUserOrDefault(currentUser);
 
   if (!wallet) {
     throw new Error("Default TEST_VAULT wallet not found. Visit /api/dev/seed first.");
@@ -67,7 +66,7 @@ export async function addCustodyEvent(evidenceId: string, formData: FormData) {
   const { block, transaction } = await createLedgerBlock({
     type: "ADD_CUSTODY_EVENT",
     payload: custodyPayload,
-    signerPublicKey: DEFAULT_PUBLIC_KEY,
+    signerPublicKey: getSignerPublicKey(currentUser),
     feeAmount: CUSTODY_FEE,
   });
 
@@ -78,7 +77,8 @@ export async function addCustodyEvent(evidenceId: string, formData: FormData) {
       notes: notes || null,
       actorName,
       actorRole,
-      publicKey: DEFAULT_PUBLIC_KEY,
+      actorId: currentUser?.id ?? null,
+      publicKey: getSignerPublicKey(currentUser),
       signature: null,
       previousEventHash,
       eventHash,
@@ -88,7 +88,7 @@ export async function addCustodyEvent(evidenceId: string, formData: FormData) {
   });
 
   await prisma.wallet.update({
-    where: { address: DEFAULT_WALLET_ADDRESS },
+    where: { id: wallet.id },
     data: {
       balance: wallet.balance - CUSTODY_FEE,
     },

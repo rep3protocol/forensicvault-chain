@@ -2,14 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth/session";
+import { getSignerPublicKey, getWalletForUserOrDefault } from "@/lib/auth/wallet";
 import { sha256Buffer } from "@/lib/crypto/hash";
 import { createLedgerBlock } from "@/lib/ledger/createBlock";
 import { calculateIntegrityScore } from "@/lib/ledger/integrityScore";
 import { validateLedgerChain } from "@/lib/ledger/validateChain";
 import { prisma } from "@/lib/prisma";
 import {
-  DEFAULT_PUBLIC_KEY,
-  DEFAULT_WALLET_ADDRESS,
   ensureSufficientBalance,
   FEES,
   getFee,
@@ -32,9 +32,8 @@ export async function verifyEvidence(evidenceId: string, formData: FormData) {
     throw new Error("Evidence not found.");
   }
 
-  const wallet = await prisma.wallet.findUnique({
-    where: { address: DEFAULT_WALLET_ADDRESS },
-  });
+  const currentUser = await getCurrentUser();
+  const wallet = await getWalletForUserOrDefault(currentUser);
 
   if (!wallet) {
     throw new Error(
@@ -93,7 +92,7 @@ export async function verifyEvidence(evidenceId: string, formData: FormData) {
           integrityScore,
           verifiedAt,
         },
-        signerPublicKey: DEFAULT_PUBLIC_KEY,
+        signerPublicKey: getSignerPublicKey(currentUser),
         feeAmount: FEES.VERIFY_EVIDENCE,
       },
       tx,

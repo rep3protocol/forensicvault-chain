@@ -1,16 +1,17 @@
 import { TestnetWarning } from "@/components/TestnetWarning";
-import {
-  DEFAULT_WALLET_ADDRESS,
-  TEST_VAULT_SYMBOL,
-} from "@/lib/token/testVault";
+import { requireCurrentUser } from "@/lib/auth/session";
+import { ensureWalletForUser } from "@/lib/auth/wallet";
+import { TEST_VAULT_SYMBOL } from "@/lib/token/testVault";
 import { prisma } from "@/lib/prisma";
 
 export default async function WalletPage() {
-  const wallet = await prisma.wallet.findUnique({
-    where: { address: DEFAULT_WALLET_ADDRESS },
-  });
+  const user = await requireCurrentUser();
+  const wallet = await ensureWalletForUser(user);
 
   const transactions = await prisma.tokenTransaction.findMany({
+    where: {
+      OR: [{ fromWallet: wallet.address }, { toWallet: wallet.address }],
+    },
     orderBy: { createdAt: "desc" },
     take: 50,
   });
@@ -23,7 +24,7 @@ export default async function WalletPage() {
             Wallet
           </h1>
           <p className="mt-1 text-sm text-slate-400">
-            Local {TEST_VAULT_SYMBOL} balance for ledger fees and operations.
+            Local {TEST_VAULT_SYMBOL} balance for {user.name}.
           </p>
         </div>
         <TestnetWarning />
@@ -35,52 +36,43 @@ export default async function WalletPage() {
         currency.
       </div>
 
-      {wallet ? (
-        <section className="mb-10 grid gap-6 sm:grid-cols-2">
-          <div className="rounded-lg border border-cyan-800/60 bg-cyan-950/20 p-6">
-            <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">
-              Balance
-            </p>
-            <p className="mt-2 text-3xl font-semibold tabular-nums text-cyan-300">
-              {wallet.balance.toLocaleString()}{" "}
-              <span className="text-lg text-cyan-400/70">{TEST_VAULT_SYMBOL}</span>
-            </p>
-          </div>
-          <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-6">
-            <dl className="grid gap-3 text-sm">
-              <div>
-                <dt className="text-xs font-medium text-slate-500">Label</dt>
-                <dd className="mt-0.5 text-slate-200">{wallet.label}</dd>
-              </div>
-              <div>
-                <dt className="text-xs font-medium text-slate-500">Address</dt>
-                <dd className="mt-0.5 font-mono text-xs text-slate-400">
-                  {wallet.address}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs font-medium text-slate-500">
-                  Public Key
-                </dt>
-                <dd className="mt-0.5 font-mono text-xs text-slate-400">
-                  {wallet.publicKey ?? "—"}
-                </dd>
-              </div>
-            </dl>
-          </div>
-        </section>
-      ) : (
-        <div className="mb-10 rounded-lg border border-dashed border-slate-700 bg-slate-900/30 px-6 py-8 text-center">
-          <p className="text-sm text-slate-400">No default wallet found.</p>
-          <p className="mt-1 text-xs text-slate-500">
-            Run{" "}
-            <code className="rounded bg-slate-800 px-1.5 py-0.5 font-mono text-slate-300">
-              GET /api/dev/seed
-            </code>{" "}
-            to create the local dev wallet.
+      <section className="mb-10 grid gap-6 sm:grid-cols-2">
+        <div className="rounded-lg border border-cyan-800/60 bg-cyan-950/20 p-6">
+          <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">
+            Balance
+          </p>
+          <p className="mt-2 text-3xl font-semibold tabular-nums text-cyan-300">
+            {wallet.balance.toLocaleString()}{" "}
+            <span className="text-lg text-cyan-400/70">{TEST_VAULT_SYMBOL}</span>
           </p>
         </div>
-      )}
+        <div className="rounded-lg border border-slate-800 bg-slate-900/50 p-6">
+          <dl className="grid gap-3 text-sm">
+            <div>
+              <dt className="text-xs font-medium text-slate-500">Investigator</dt>
+              <dd className="mt-0.5 text-slate-200">{user.name}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium text-slate-500">Label</dt>
+              <dd className="mt-0.5 text-slate-200">{wallet.label}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium text-slate-500">Address</dt>
+              <dd className="mt-0.5 font-mono text-xs text-slate-400">
+                {wallet.address}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium text-slate-500">
+                Public Key
+              </dt>
+              <dd className="mt-0.5 font-mono text-xs text-slate-400">
+                {wallet.publicKey ?? "—"}
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </section>
 
       <section>
         <h2 className="mb-4 text-sm font-medium tracking-wide text-slate-300 uppercase">

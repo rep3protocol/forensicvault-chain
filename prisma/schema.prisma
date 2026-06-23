@@ -7,15 +7,17 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String?
-  role      String   @default("Investigator")
-  publicKey String?  @unique
-  createdAt DateTime @default(now())
+  id           String   @id @default(cuid())
+  name         String
+  email        String?
+  passwordHash String?
+  role         String   @default("Investigator")
+  publicKey    String?  @unique
+  createdAt    DateTime @default(now())
 
   cases  Case[]
   events CustodyEvent[]
+  wallets Wallet[]
 }
 
 model Case {
@@ -130,6 +132,9 @@ model Wallet {
   balance   Int      @default(1000)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
 }
 
 model TokenTransaction {

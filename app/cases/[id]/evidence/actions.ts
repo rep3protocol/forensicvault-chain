@@ -4,13 +4,13 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth/session";
+import { getSignerPublicKey, getWalletForUserOrDefault } from "@/lib/auth/wallet";
 import { sha256Buffer } from "@/lib/crypto/hash";
 import { findDuplicateEvidenceByHash } from "@/lib/evidence/duplicates";
 import { createLedgerBlock } from "@/lib/ledger/createBlock";
 import { prisma } from "@/lib/prisma";
 import {
-  DEFAULT_PUBLIC_KEY,
-  DEFAULT_WALLET_ADDRESS,
   ensureSufficientBalance,
   FEES,
   getFee,
@@ -55,9 +55,8 @@ export async function registerEvidence(caseId: string, formData: FormData) {
     throw new Error("Case not found.");
   }
 
-  const wallet = await prisma.wallet.findUnique({
-    where: { address: DEFAULT_WALLET_ADDRESS },
-  });
+  const currentUser = await getCurrentUser();
+  const wallet = await getWalletForUserOrDefault(currentUser);
 
   if (!wallet) {
     throw new Error(
@@ -120,7 +119,7 @@ export async function registerEvidence(caseId: string, formData: FormData) {
               }
             : {}),
         },
-        signerPublicKey: DEFAULT_PUBLIC_KEY,
+        signerPublicKey: getSignerPublicKey(currentUser),
         feeAmount: FEES.REGISTER_EVIDENCE,
       },
       tx,
