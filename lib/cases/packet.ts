@@ -116,6 +116,11 @@ export async function getCasePacketData(caseId: string) {
     (total, item) => total + item.verifications.length,
     0,
   );
+  const evidenceItemsWithVerification = caseItem.evidence.filter(
+    (item) => item.verifications.length > 0,
+  ).length;
+  const evidenceItemsWithoutVerification =
+    caseItem.evidence.length - evidenceItemsWithVerification;
   const matchedVerifications = caseItem.evidence.reduce(
     (total, item) =>
       total + item.verifications.filter((verification) => verification.matched).length,
@@ -133,6 +138,9 @@ export async function getCasePacketData(caseId: string) {
       totalDuplicateHashGroups: duplicateGroups.length,
       totalCustodyEvents,
       totalVerifications,
+      totalVerificationRecords: totalVerifications,
+      evidenceItemsWithVerification,
+      evidenceItemsWithoutVerification,
       matchedVerifications,
       failedVerifications,
       latestLedgerBlockHeight: latestLedgerBlock?.height ?? null,

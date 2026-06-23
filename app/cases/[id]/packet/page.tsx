@@ -102,6 +102,15 @@ export default async function CasePacketPage({ params }: CasePacketPageProps) {
           <Detail label="Total Duplicate Hash Groups">{integritySummary.totalDuplicateHashGroups}</Detail>
           <Detail label="Total Custody Events">{integritySummary.totalCustodyEvents}</Detail>
           <Detail label="Total Verifications">{integritySummary.totalVerifications}</Detail>
+          <Detail label="Total Verification Records">
+            {integritySummary.totalVerificationRecords}
+          </Detail>
+          <Detail label="Evidence Items With Verification">
+            {integritySummary.evidenceItemsWithVerification}
+          </Detail>
+          <Detail label="Evidence Items Without Verification">
+            {integritySummary.evidenceItemsWithoutVerification}
+          </Detail>
           <Detail label="Matched Verifications">{integritySummary.matchedVerifications}</Detail>
           <Detail label="Failed/Non-Matching Verifications">{integritySummary.failedVerifications}</Detail>
           <Detail label="Latest Ledger Block Height">

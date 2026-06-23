@@ -110,18 +110,24 @@ export async function createCasePacketPdf(packet: CasePacketData) {
 
   function field(label: string, value: unknown) {
     ensureSpace(26);
-    page.drawText(`${label}:`, {
+    const labelText = `${label}: `;
+    const labelWidth = boldFont.widthOfTextAtSize(labelText, 9);
+    const valueX = margin + labelWidth;
+    const valueWidth = maxWidth - labelWidth;
+
+    page.drawText(labelText, {
       x: margin,
       y,
       size: 9,
       font: boldFont,
       color: rgb(0, 0, 0),
     });
-    const lines = wrapText(value, 9, maxWidth - 155);
+
+    const lines = wrapText(value, 9, valueWidth);
     for (let i = 0; i < Math.max(lines.length, 1); i++) {
       ensureSpace(14);
       page.drawText(i === 0 ? lines[i] ?? "N/A" : lines[i], {
-        x: margin + 155,
+        x: valueX,
         y,
         size: 9,
         font: regularFont,
@@ -162,6 +168,9 @@ export async function createCasePacketPdf(packet: CasePacketData) {
   field("Total Duplicate Hash Groups", integritySummary.totalDuplicateHashGroups);
   field("Total Custody Events", integritySummary.totalCustodyEvents);
   field("Total Verifications", integritySummary.totalVerifications);
+  field("Total Verification Records", integritySummary.totalVerificationRecords);
+  field("Evidence Items With Verification", integritySummary.evidenceItemsWithVerification);
+  field("Evidence Items Without Verification", integritySummary.evidenceItemsWithoutVerification);
   field("Matched Verifications", integritySummary.matchedVerifications);
   field("Failed/Non-Matching Verifications", integritySummary.failedVerifications);
   field("Latest Ledger Block Height", integritySummary.latestLedgerBlockHeight ?? "N/A");
