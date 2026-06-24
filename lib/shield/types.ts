@@ -95,6 +95,15 @@ export type ShieldMetrics = {
   recentHighAuditEvents: number;
   recentCriticalAuditEvents: number;
   auditValidationErrorCount: number;
+  backupPackageCount: number;
+  latestBackupFilename: string | null;
+  latestBackupCreatedAt: string | null;
+  latestBackupSha256: string | null;
+  latestBackupVerified: boolean | null;
+  restoreMarkerCount: number;
+  latestRestoreAt: string | null;
+  latestRestoreBackupFilename: string | null;
+  preRestoreBackupExists: boolean;
 };
 
 export type ShieldScanResult = {

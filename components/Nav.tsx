@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { canViewOwnerDiagnostics } from "@/lib/dev/owner";
 import type { Permission } from "@/lib/auth/permissions";
 import { can } from "@/lib/auth/permissions";
 import { getCurrentUserWithRole } from "@/lib/auth/requirePermission";
@@ -8,6 +9,7 @@ type NavLink = {
   href: string;
   label: string;
   permission?: Permission;
+  ownerOnly?: boolean;
 };
 
 const links: NavLink[] = [
@@ -17,22 +19,27 @@ const links: NavLink[] = [
   { href: "/cases", label: "Cases", permission: "VIEW_CASES" },
   { href: "/evidence", label: "Evidence", permission: "VIEW_EVIDENCE" },
   { href: "/guard", label: "Shield", permission: "VIEW_SHIELD" },
+  { href: "/audit", label: "Audit", permission: "VIEW_AUDIT_LOG" },
+  { href: "/backups", label: "Backups", permission: "VIEW_BACKUPS" },
   { href: "/ledger", label: "Ledger", permission: "VIEW_LEDGER" },
   { href: "/anchors", label: "Anchors", permission: "VIEW_ANCHORS" },
   { href: "/wallet", label: "Wallet", permission: "VIEW_WALLET" },
   { href: "/verify", label: "Verify", permission: "VERIFY_EVIDENCE" },
   { href: "/tamper-test", label: "Tamper Test", permission: "USE_TAMPER_TEST" },
-  { href: "/audit", label: "Audit", permission: "VIEW_AUDIT_LOG" },
+  { href: "/dev/diagnostics", label: "Diagnostics", ownerOnly: true },
   { href: "/admin/users", label: "Admin", permission: "MANAGE_USERS" },
 ];
 
 export async function Nav() {
   const session = await getCurrentUserWithRole();
   const visibleLinks = session
-    ? links.filter(
-        (link) => !link.permission || can(session.role, link.permission),
-      )
-    : links.filter((link) => !link.permission);
+    ? links.filter((link) => {
+        if (link.ownerOnly) {
+          return canViewOwnerDiagnostics(session.user);
+        }
+        return !link.permission || can(session.role, link.permission);
+      })
+    : links.filter((link) => !link.permission && !link.ownerOnly);
 
   return (
     <header className="border-b border-slate-800 bg-slate-950/80 backdrop-blur">

@@ -21,5 +21,17 @@ describe("audit permissions", () => {
   it("blocks INVESTIGATOR from managing users", () => {
     expect(can("INVESTIGATOR", "MANAGE_USERS")).toBe(false);
     expect(can("INVESTIGATOR", "VIEW_AUDIT_LOG")).toBe(false);
+    expect(can("INVESTIGATOR", "VIEW_BACKUPS")).toBe(false);
+  });
+
+  it("allows SUPERVISOR backup access but not restore", () => {
+    expect(can("SUPERVISOR", "VIEW_BACKUPS")).toBe(true);
+    expect(can("SUPERVISOR", "CREATE_BACKUP")).toBe(true);
+    expect(can("SUPERVISOR", "RESTORE_BACKUP")).toBe(false);
+  });
+
+  it("allows ADMIN backup and restore permissions", () => {
+    expect(can("ADMIN", "RESTORE_BACKUP")).toBe(true);
+    expect(can("ADMIN", "RUN_DEV_DIAGNOSTICS")).toBe(true);
   });
 });
