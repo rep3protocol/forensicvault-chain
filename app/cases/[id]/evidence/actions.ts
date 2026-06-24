@@ -4,7 +4,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth/session";
+import { assertPermission } from "@/lib/auth/requirePermission";
 import { getSignerPublicKey, getWalletForUserOrDefault } from "@/lib/auth/wallet";
 import { sha256Buffer } from "@/lib/crypto/hash";
 import { findDuplicateEvidenceByHash } from "@/lib/evidence/duplicates";
@@ -35,6 +35,11 @@ function sanitizeFilename(name: string): string {
 }
 
 export async function registerEvidence(caseId: string, formData: FormData) {
+  const currentUser = await assertPermission(
+    "UPLOAD_EVIDENCE",
+    "Your current local role does not allow uploading evidence.",
+  );
+
   const file = formData.get("file");
   const evidenceType = formData.get("evidenceType")?.toString().trim();
   const notes = formData.get("notes")?.toString().trim();
@@ -55,7 +60,6 @@ export async function registerEvidence(caseId: string, formData: FormData) {
     throw new Error("Case not found.");
   }
 
-  const currentUser = await getCurrentUser();
   const wallet = await getWalletForUserOrDefault(currentUser);
 
   if (!wallet) {

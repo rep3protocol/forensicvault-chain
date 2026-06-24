@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireCurrentUser } from "@/lib/auth/session";
+import { assertPermission } from "@/lib/auth/requirePermission";
 import { prisma } from "@/lib/prisma";
 
 function stringValue(formData: FormData, key: string) {
@@ -26,7 +26,10 @@ function nullableStringValue(formData: FormData, key: string) {
 }
 
 export async function acknowledgeShieldAlert(formData: FormData) {
-  const user = await requireCurrentUser();
+  const user = await assertPermission(
+    "ACKNOWLEDGE_SHIELD_ALERT",
+    "Your current local role does not allow acknowledging Shield alerts.",
+  );
   const alertId = requiredStringValue(formData, "alertId");
   const alertTitle = requiredStringValue(formData, "alertTitle");
   const severity = requiredStringValue(formData, "severity");
@@ -82,7 +85,10 @@ export async function acknowledgeShieldAlert(formData: FormData) {
 }
 
 export async function clearShieldAcknowledgement(formData: FormData) {
-  const user = await requireCurrentUser();
+  const user = await assertPermission(
+    "CLEAR_SHIELD_ACKNOWLEDGEMENT",
+    "Your current local role does not allow clearing Shield acknowledgements.",
+  );
   const alertId = requiredStringValue(formData, "alertId");
   const existing = await prisma.shieldAlertAcknowledgement.findUnique({
     where: { alertId },

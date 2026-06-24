@@ -1,21 +1,37 @@
 import Link from "next/link";
-import { getCurrentUser } from "@/lib/auth/session";
+import type { Permission } from "@/lib/auth/permissions";
+import { can } from "@/lib/auth/permissions";
+import { getCurrentUserWithRole } from "@/lib/auth/requirePermission";
+import { RoleBadge } from "@/components/RoleBadge";
 
-const links = [
-  { href: "/", label: "Dashboard" },
-  { href: "/getting-started", label: "Getting Started" },
-  { href: "/demo", label: "Demo" },
-  { href: "/cases", label: "Cases" },
-  { href: "/evidence", label: "Evidence" },
-  { href: "/guard", label: "Shield" },
-  { href: "/ledger", label: "Ledger" },
-  { href: "/anchors", label: "Anchors" },
-  { href: "/wallet", label: "Wallet" },
-  { href: "/verify", label: "Verify" },
+type NavLink = {
+  href: string;
+  label: string;
+  permission?: Permission;
+};
+
+const links: NavLink[] = [
+  { href: "/", label: "Dashboard", permission: "VIEW_DASHBOARD" },
+  { href: "/getting-started", label: "Getting Started", permission: "VIEW_DASHBOARD" },
+  { href: "/demo", label: "Demo", permission: "VIEW_DEMO" },
+  { href: "/cases", label: "Cases", permission: "VIEW_CASES" },
+  { href: "/evidence", label: "Evidence", permission: "VIEW_EVIDENCE" },
+  { href: "/guard", label: "Shield", permission: "VIEW_SHIELD" },
+  { href: "/ledger", label: "Ledger", permission: "VIEW_LEDGER" },
+  { href: "/anchors", label: "Anchors", permission: "VIEW_ANCHORS" },
+  { href: "/wallet", label: "Wallet", permission: "VIEW_WALLET" },
+  { href: "/verify", label: "Verify", permission: "VERIFY_EVIDENCE" },
+  { href: "/tamper-test", label: "Tamper Test", permission: "USE_TAMPER_TEST" },
+  { href: "/admin/users", label: "Admin", permission: "MANAGE_USERS" },
 ];
 
 export async function Nav() {
-  const user = await getCurrentUser();
+  const session = await getCurrentUserWithRole();
+  const visibleLinks = session
+    ? links.filter(
+        (link) => !link.permission || can(session.role, link.permission),
+      )
+    : links.filter((link) => !link.permission);
 
   return (
     <header className="border-b border-slate-800 bg-slate-950/80 backdrop-blur">
@@ -29,7 +45,7 @@ export async function Nav() {
           </span>
         </Link>
         <nav className="flex flex-wrap items-center gap-1">
-          {links.map((link) => (
+          {visibleLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
@@ -38,10 +54,11 @@ export async function Nav() {
               {link.label}
             </Link>
           ))}
-          {user ? (
+          {session ? (
             <>
-              <span className="rounded border border-slate-800 px-3 py-1.5 text-sm text-slate-300">
-                {user.name}
+              <span className="flex items-center gap-2 rounded border border-slate-800 px-3 py-1.5 text-sm text-slate-300">
+                {session.user.name}
+                <RoleBadge role={session.user.role} />
               </span>
               <Link
                 href="/logout"

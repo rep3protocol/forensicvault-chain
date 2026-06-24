@@ -9,7 +9,8 @@ export type ShieldAlertCategory =
   | "duplicates"
   | "storage"
   | "anchors"
-  | "cases";
+  | "cases"
+  | "security";
 
 export type ShieldAlert = {
   id: string;
@@ -83,6 +84,9 @@ export type ShieldMetrics = {
   verifiedCustodySignatures: number;
   failedCustodySignatures: number;
   missingCustodySignatures: number;
+  totalUsers: number;
+  adminCount: number;
+  unrecognizedRoleCount: number;
 };
 
 export type ShieldScanResult = {

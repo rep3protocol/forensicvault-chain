@@ -3,6 +3,7 @@
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { redirect } from "next/navigation";
+import { assertPermission } from "@/lib/auth/requirePermission";
 import { stableJson } from "@/lib/crypto/hash";
 import { prisma } from "@/lib/prisma";
 
@@ -71,6 +72,11 @@ function tamperPayloadJson(payloadJson: string) {
 }
 
 export async function tamperWithBlock(formData: FormData) {
+  await assertPermission(
+    "USE_TAMPER_TEST",
+    "Your current local role does not allow running tamper test actions.",
+  );
+
   const blockId = String(formData.get("blockId") ?? "");
 
   if (!blockId) {
@@ -146,6 +152,11 @@ export async function tamperWithBlock(formData: FormData) {
 }
 
 export async function restoreLatestTamperBackup() {
+  await assertPermission(
+    "USE_TAMPER_TEST",
+    "Your current local role does not allow running tamper test actions.",
+  );
+
   await ensureBackupDir();
 
   const files = (await readdir(BACKUP_DIR))

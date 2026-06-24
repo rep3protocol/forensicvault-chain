@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { FirstRunHelper } from "@/components/FirstRunHelper";
+import { RoleBadge } from "@/components/RoleBadge";
 import { TestnetWarning } from "@/components/TestnetWarning";
 import { getCurrentUser } from "@/lib/auth/session";
 import { ensureWalletForUser } from "@/lib/auth/wallet";
@@ -70,6 +71,12 @@ export default async function HomePage() {
           <p className="mt-2 text-base text-slate-400">
             Verify evidence. Prove custody. Protect truth.
           </p>
+          {currentUser && (
+            <div className="mt-3 flex items-center gap-2 text-sm text-slate-400">
+              <span>Signed in as {currentUser.name}</span>
+              <RoleBadge role={currentUser.role} />
+            </div>
+          )}
           <div className="mt-4">
             <TestnetWarning />
           </div>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { TestnetWarning } from "@/components/TestnetWarning";
+import { requirePermission } from "@/lib/auth/requirePermission";
 import { FEES, TEST_VAULT_SYMBOL } from "@/lib/token/testVault";
 import { prisma } from "@/lib/prisma";
 import { registerEvidence } from "../actions";
@@ -21,6 +22,7 @@ const EVIDENCE_TYPES = [
 
 export default async function NewEvidencePage({ params }: NewEvidencePageProps) {
   const { id } = await params;
+  await requirePermission("UPLOAD_EVIDENCE");
 
   const caseItem = await prisma.case.findUnique({
     where: { id },

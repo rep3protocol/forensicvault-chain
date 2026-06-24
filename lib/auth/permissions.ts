@@ -1,0 +1,115 @@
+import { normalizeRole, type UserRole } from "@/lib/auth/roles";
+
+export const PERMISSIONS = [
+  "VIEW_DASHBOARD",
+  "VIEW_CASES",
+  "CREATE_CASE",
+  "VIEW_CASE_DETAIL",
+  "UPLOAD_EVIDENCE",
+  "VIEW_EVIDENCE",
+  "ADD_CUSTODY_EVENT",
+  "VERIFY_EVIDENCE",
+  "VIEW_LEDGER",
+  "VIEW_WALLET",
+  "VIEW_REPORTS",
+  "EXPORT_REPORT",
+  "EXPORT_CASE_PACKET",
+  "VIEW_ANCHORS",
+  "SAVE_ANCHOR",
+  "UPDATE_ANCHOR_PUBLICATION",
+  "VIEW_SHIELD",
+  "ACKNOWLEDGE_SHIELD_ALERT",
+  "CLEAR_SHIELD_ACKNOWLEDGEMENT",
+  "VIEW_SHIELD_EVENTS",
+  "USE_TAMPER_TEST",
+  "VIEW_DEMO",
+  "RUN_DEMO_ACTIONS",
+  "MANAGE_USERS",
+  "CHANGE_USER_ROLES",
+  "VIEW_ADMIN_PANEL",
+] as const;
+
+export type Permission = (typeof PERMISSIONS)[number];
+
+const ALL_PERMISSIONS: readonly Permission[] = PERMISSIONS;
+
+const INVESTIGATOR_PERMISSIONS: readonly Permission[] = [
+  "VIEW_DASHBOARD",
+  "VIEW_CASES",
+  "CREATE_CASE",
+  "VIEW_CASE_DETAIL",
+  "UPLOAD_EVIDENCE",
+  "VIEW_EVIDENCE",
+  "ADD_CUSTODY_EVENT",
+  "VERIFY_EVIDENCE",
+  "VIEW_LEDGER",
+  "VIEW_WALLET",
+  "VIEW_REPORTS",
+  "EXPORT_REPORT",
+  "EXPORT_CASE_PACKET",
+  "VIEW_ANCHORS",
+  "SAVE_ANCHOR",
+  "UPDATE_ANCHOR_PUBLICATION",
+  "VIEW_SHIELD",
+  "ACKNOWLEDGE_SHIELD_ALERT",
+  "VIEW_SHIELD_EVENTS",
+  "VIEW_DEMO",
+  "RUN_DEMO_ACTIONS",
+];
+
+const SUPERVISOR_PERMISSIONS: readonly Permission[] = [
+  ...INVESTIGATOR_PERMISSIONS,
+  "CLEAR_SHIELD_ACKNOWLEDGEMENT",
+];
+
+const EVIDENCE_CUSTODIAN_PERMISSIONS: readonly Permission[] = [
+  "VIEW_DASHBOARD",
+  "VIEW_CASES",
+  "VIEW_CASE_DETAIL",
+  "UPLOAD_EVIDENCE",
+  "VIEW_EVIDENCE",
+  "ADD_CUSTODY_EVENT",
+  "VERIFY_EVIDENCE",
+  "VIEW_LEDGER",
+  "VIEW_REPORTS",
+  "EXPORT_REPORT",
+  "EXPORT_CASE_PACKET",
+  "VIEW_ANCHORS",
+  "SAVE_ANCHOR",
+  "VIEW_SHIELD",
+  "VIEW_SHIELD_EVENTS",
+];
+
+const VIEWER_PERMISSIONS: readonly Permission[] = [
+  "VIEW_DASHBOARD",
+  "VIEW_CASES",
+  "VIEW_CASE_DETAIL",
+  "VIEW_EVIDENCE",
+  "VIEW_LEDGER",
+  "VIEW_REPORTS",
+  "EXPORT_REPORT",
+  "EXPORT_CASE_PACKET",
+  "VIEW_ANCHORS",
+  "VIEW_SHIELD",
+  "VIEW_SHIELD_EVENTS",
+];
+
+export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
+  ADMIN: ALL_PERMISSIONS,
+  SUPERVISOR: SUPERVISOR_PERMISSIONS,
+  INVESTIGATOR: INVESTIGATOR_PERMISSIONS,
+  EVIDENCE_CUSTODIAN: EVIDENCE_CUSTODIAN_PERMISSIONS,
+  VIEWER: VIEWER_PERMISSIONS,
+};
+
+export function can(userRole: string | null | undefined, permission: Permission): boolean {
+  const role = normalizeRole(userRole);
+  return ROLE_PERMISSIONS[role].includes(permission);
+}
+
+export function canAny(
+  userRole: string | null | undefined,
+  permissions: readonly Permission[],
+): boolean {
+  return permissions.some((permission) => can(userRole, permission));
+}

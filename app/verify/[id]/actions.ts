@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth/session";
+import { assertPermission } from "@/lib/auth/requirePermission";
 import { getSignerPublicKey, getWalletForUserOrDefault } from "@/lib/auth/wallet";
 import { sha256Buffer } from "@/lib/crypto/hash";
 import { createLedgerBlock } from "@/lib/ledger/createBlock";
@@ -18,6 +18,11 @@ import {
 const VALIDATOR_ADDRESS = "LOCAL_DEV_VALIDATOR";
 
 export async function verifyEvidence(evidenceId: string, formData: FormData) {
+  const currentUser = await assertPermission(
+    "VERIFY_EVIDENCE",
+    "Your current local role does not allow verifying evidence.",
+  );
+
   const file = formData.get("file");
 
   if (!(file instanceof File) || file.size === 0) {
@@ -32,7 +37,6 @@ export async function verifyEvidence(evidenceId: string, formData: FormData) {
     throw new Error("Evidence not found.");
   }
 
-  const currentUser = await getCurrentUser();
   const wallet = await getWalletForUserOrDefault(currentUser);
 
   if (!wallet) {

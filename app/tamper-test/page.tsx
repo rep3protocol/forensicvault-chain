@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
+import { requirePermission } from "@/lib/auth/requirePermission";
 import { tamperWithBlock, restoreLatestTamperBackup } from "@/app/tamper-test/actions";
 import { shortenHash } from "@/lib/format";
 import { validateLedgerChain } from "@/lib/ledgerValidation";
@@ -7,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 
 export default async function TamperTestPage() {
   await connection();
+  await requirePermission("USE_TAMPER_TEST");
 
   const [blocks, totalBlocks, latestBlock, validation] = await Promise.all([
     prisma.ledgerBlock.findMany({

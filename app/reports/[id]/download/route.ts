@@ -1,5 +1,7 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { denyUnlessDownloadPermission } from "@/lib/auth/downloadAccess";
 import { getDuplicateEvidenceForItem } from "@/lib/evidence/duplicates";
 import { prisma } from "@/lib/prisma";
 
@@ -39,9 +41,12 @@ function safeText(value: unknown) {
 }
 
 export async function GET(
-  _request: Request,
+  request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const denied = await denyUnlessDownloadPermission("EXPORT_REPORT", request);
+  if (denied) return denied;
+
   const { id } = await context.params;
 
   const evidence = await prisma.evidenceItem.findUnique({

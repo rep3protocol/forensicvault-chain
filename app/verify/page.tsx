@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { TestnetWarning } from "@/components/TestnetWarning";
+import { requirePermission } from "@/lib/auth/requirePermission";
 import { shortenHash } from "@/lib/format";
 import { FEES, TEST_VAULT_SYMBOL } from "@/lib/token/testVault";
 import { prisma } from "@/lib/prisma";
 
 export default async function VerifyPage() {
+  await requirePermission("VERIFY_EVIDENCE");
+
   const evidenceItems = await prisma.evidenceItem.findMany({
     orderBy: { createdAt: "desc" },
     include: {

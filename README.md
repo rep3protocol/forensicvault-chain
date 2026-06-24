@@ -27,6 +27,7 @@ This project does not claim to provide a real blockchain, real cryptocurrency, l
 - Chain-of-custody events
 - Local custody signatures (Ed25519)
 - Custody signature verification
+- Role-based permissions (local MVP)
 - Local hash-linked ledger
 - Tamper test page
 - Individual PDF evidence reports
@@ -186,6 +187,24 @@ reports can verify those stored signatures later.
 - This does not claim production-grade key custody, legal admissibility, or tamper-proof security.
 
 **LOCAL TESTNET — TEST_VAULT HAS NO REAL VALUE.**
+
+## Role-Based Permissions
+
+ForensicVault Chain includes local MVP role-based permissions for workflow separation.
+
+Roles:
+
+- **Admin** — full local control, tamper test, and user management
+- **Supervisor** — review/export workflows plus Shield acknowledge and clear
+- **Investigator** — create cases, upload evidence, verify, custody, anchors, and Shield acknowledge
+- **Evidence Custodian** — evidence/custody focused workflow without case creation
+- **Viewer** — read-only access to cases, evidence, ledger, reports, anchors, and Shield
+
+Permissions are enforced in server page guards and server actions. Navigation hides unauthorized links, but server-side checks are the actual protection.
+
+- `/admin/users` is available to Admin users for local role management.
+- The dev seed user (`Local Investigator`) is seeded as **Admin** so local testing is not locked out.
+- This is not production-grade IAM. Production would require hardened auth/session management, audit logs, and stronger policy controls.
 
 ## ForensicVault Shield
 

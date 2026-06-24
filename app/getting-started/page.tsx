@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { TestnetWarning } from "@/components/TestnetWarning";
 import { FirstRunHelper } from "@/components/FirstRunHelper";
+import { requirePermission } from "@/lib/auth/requirePermission";
 import { getOnboardingProgress } from "@/lib/onboarding/progress";
 
 const workflow = [
@@ -25,6 +26,7 @@ const pages = [
 ];
 
 export default async function GettingStartedPage() {
+  await requirePermission("VIEW_DASHBOARD");
   const progress = await getOnboardingProgress();
 
   return (

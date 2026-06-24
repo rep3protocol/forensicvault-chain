@@ -1,8 +1,11 @@
 import { TestnetWarning } from "@/components/TestnetWarning";
+import { requirePermission } from "@/lib/auth/requirePermission";
 import { shortenHash } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 
 export default async function LedgerPage() {
+  await requirePermission("VIEW_LEDGER");
+
   const [blocks, totalBlocks] = await Promise.all([
     prisma.ledgerBlock.findMany({
       orderBy: { height: "desc" },

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { TestnetWarning } from "@/components/TestnetWarning";
-import { getCurrentUser } from "@/lib/auth/session";
+import { can } from "@/lib/auth/permissions";
+import { getCurrentUserWithRole, requirePermission } from "@/lib/auth/requirePermission";
 import { getDuplicateCountsByHashes } from "@/lib/evidence/duplicates";
 import { DEMO_CASE_TITLE_PREFIX } from "@/lib/demo/sampleData";
 import { prisma } from "@/lib/prisma";
@@ -71,7 +72,11 @@ function Stat({ label, value }: { label: string; value: string | number }) {
 }
 
 export default async function DemoPage() {
-  const [user, status] = await Promise.all([getCurrentUser(), getDemoStatus()]);
+  await requirePermission("VIEW_DEMO");
+  const session = await getCurrentUserWithRole();
+  const canRunDemoActions = session ? can(session.role, "RUN_DEMO_ACTIONS") : false;
+  const [status] = await Promise.all([getDemoStatus()]);
+  const user = session?.user ?? null;
   const demoCase = status.demoCase;
   const firstEvidence = demoCase?.evidence[0];
 
@@ -119,6 +124,8 @@ export default async function DemoPage() {
       </section>
 
       <section className="mb-8 flex flex-wrap gap-3">
+        {canRunDemoActions ? (
+          <>
         <form action={createDemoCase}>
           <button
             type="submit"
@@ -136,6 +143,12 @@ export default async function DemoPage() {
             Reset Demo Data
           </button>
         </form>
+          </>
+        ) : (
+          <p className="text-sm text-slate-400">
+            Your current local role cannot run demo actions.
+          </p>
+        )}
         {demoCase && (
           <Link
             href={`/cases/${demoCase.id}`}

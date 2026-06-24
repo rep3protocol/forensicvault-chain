@@ -1,11 +1,11 @@
 import { TestnetWarning } from "@/components/TestnetWarning";
-import { requireCurrentUser } from "@/lib/auth/session";
+import { requirePermission } from "@/lib/auth/requirePermission";
 import { ensureWalletForUser } from "@/lib/auth/wallet";
 import { TEST_VAULT_SYMBOL } from "@/lib/token/testVault";
 import { prisma } from "@/lib/prisma";
 
 export default async function WalletPage() {
-  const user = await requireCurrentUser();
+  const user = await requirePermission("VIEW_WALLET");
   const wallet = await ensureWalletForUser(user);
 
   const transactions = await prisma.tokenTransaction.findMany({

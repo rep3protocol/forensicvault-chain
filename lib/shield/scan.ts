@@ -8,8 +8,10 @@ import {
   duplicateAlerts,
   evidenceAlerts,
   ledgerAlerts,
+  roleSecurityAlerts,
   tamperBackupAlerts,
 } from "@/lib/shield/rules";
+import { getRoleAuditSummary } from "@/lib/auth/roleAudit";
 import { getAnchorHistorySummary } from "@/lib/anchors/history";
 import { getCaseReadinessSummaries } from "@/lib/cases/readiness";
 import { summarizeCustodySignatureEvents } from "@/lib/custody/signatures";
@@ -94,6 +96,7 @@ export async function scanShield(): Promise<ShieldScanResult> {
     tamperBackupFileCount,
     anchorHistorySummary,
     caseReadinessSummaries,
+    roleAuditSummary,
   ] = await Promise.all([
     validateLedgerChain(),
     prisma.ledgerBlock.findFirst({ orderBy: { height: "desc" } }),
@@ -143,6 +146,7 @@ export async function scanShield(): Promise<ShieldScanResult> {
     countTamperBackupFiles(),
     getAnchorHistorySummary(),
     getCaseReadinessSummaries(),
+    getRoleAuditSummary(),
   ]);
 
   const duplicateGroups = getDuplicateGroups(evidenceItems);
@@ -174,6 +178,7 @@ export async function scanShield(): Promise<ShieldScanResult> {
       failedEvents: custodySignatureSummary.failedEvents,
       missingSignatureEvents: custodySignatureSummary.missingSignatureEvents,
     }),
+    ...roleSecurityAlerts(roleAuditSummary),
   ].sort((a, b) => compareSeverity(a.severity, b.severity));
   const activeAlertIds = rawAlerts.map((alert) => alert.id);
   const [acknowledgements, recentEvents] = await Promise.all([
@@ -259,6 +264,9 @@ export async function scanShield(): Promise<ShieldScanResult> {
     verifiedCustodySignatures: custodySignatureSummary.verifiedEvents,
     failedCustodySignatures: custodySignatureSummary.failedEvents,
     missingCustodySignatures: custodySignatureSummary.missingSignatureEvents,
+    totalUsers: roleAuditSummary.totalUsers,
+    adminCount: roleAuditSummary.adminCount,
+    unrecognizedRoleCount: roleAuditSummary.unrecognizedRoleCount,
   };
   const status = computeShieldStatus(unacknowledgedAlerts);
   const rawStatus = computeRawShieldStatus(alerts);

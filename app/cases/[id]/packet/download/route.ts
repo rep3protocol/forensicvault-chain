@@ -1,4 +1,6 @@
+import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { denyUnlessDownloadPermission } from "@/lib/auth/downloadAccess";
 import { getCasePacketData } from "@/lib/cases/packet";
 import { createCasePacketPdf } from "@/lib/cases/packetPdf";
 
@@ -9,9 +11,12 @@ function safeFileName(value: string) {
 }
 
 export async function GET(
-  _request: Request,
+  request: NextRequest,
   context: { params: Promise<{ id: string }> },
 ) {
+  const denied = await denyUnlessDownloadPermission("EXPORT_CASE_PACKET", request);
+  if (denied) return denied;
+
   const { id } = await context.params;
   const packet = await getCasePacketData(id);
 

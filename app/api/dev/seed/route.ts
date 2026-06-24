@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { ensureAtLeastOneAdmin } from "@/lib/auth/adminBootstrap";
 import { hashPassword } from "@/lib/auth/password";
 import { prisma } from "@/lib/prisma";
 
@@ -32,15 +33,18 @@ export async function GET() {
     update: {
       email: localEmail,
       passwordHash: hashPassword(localPassword),
+      role: "ADMIN",
     },
     create: {
       name: "Local Investigator",
       email: localEmail,
       passwordHash: hashPassword(localPassword),
-      role: "Investigator",
+      role: "ADMIN",
       publicKey: "LOCAL_DEV_PUBLIC_KEY",
     },
   });
+
+  await ensureAtLeastOneAdmin();
 
   const wallet = await prisma.wallet.upsert({
     where: {

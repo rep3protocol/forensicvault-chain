@@ -3,6 +3,7 @@
 import { randomBytes } from "node:crypto";
 import { redirect } from "next/navigation";
 import { hashPassword } from "@/lib/auth/password";
+import { isUserRole } from "@/lib/auth/roles";
 import { createSessionCookie } from "@/lib/auth/session";
 import { ensureWalletForUser } from "@/lib/auth/wallet";
 import { prisma } from "@/lib/prisma";
@@ -15,7 +16,9 @@ export async function register(formData: FormData) {
   const name = String(formData.get("name") || "").trim();
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const password = String(formData.get("password") || "");
-  const role = String(formData.get("role") || "Investigator").trim() || "Investigator";
+  const roleInput = String(formData.get("role") || "INVESTIGATOR").trim();
+  const role =
+    isUserRole(roleInput) && roleInput !== "ADMIN" ? roleInput : "INVESTIGATOR";
 
   if (!name) throw new Error("Name is required.");
   if (!email) throw new Error("Email is required.");

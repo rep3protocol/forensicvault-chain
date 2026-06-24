@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { TestnetWarning } from "@/components/TestnetWarning";
-import { getCurrentUser } from "@/lib/auth/session";
+import { can } from "@/lib/auth/permissions";
+import { getCurrentUserWithRole, requirePermission } from "@/lib/auth/requirePermission";
 import {
   summarizeCustodySignatureEvents,
 } from "@/lib/custody/signatures";
@@ -60,6 +61,9 @@ export default async function EvidenceDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  await requirePermission("VIEW_EVIDENCE");
+  const session = await getCurrentUserWithRole();
+  const canAddCustodyEvent = session ? can(session.role, "ADD_CUSTODY_EVENT") : false;
 
   const evidence = await prisma.evidenceItem.findUnique({
     where: { id },
@@ -77,7 +81,7 @@ export default async function EvidenceDetailPage({
   if (!evidence) notFound();
 
   const duplicateInfo = await getDuplicateEvidenceForItem(evidence.id);
-  const currentUser = await getCurrentUser();
+  const currentUser = session?.user ?? null;
   const latestVerification = evidence.verifications[0];
   const isCustodyValid = custodyChainValid(
     evidence.registeredTxHash,
@@ -378,6 +382,7 @@ export default async function EvidenceDetailPage({
         </p>
       </section>
 
+      {canAddCustodyEvent ? (
       <section className="rounded-xl border border-slate-700 bg-slate-900/70 p-6">
         <h2 className="mb-4 text-lg font-semibold">Add Custody Event</h2>
         <p className="mb-4 text-sm text-slate-400">
@@ -422,6 +427,14 @@ export default async function EvidenceDetailPage({
           </button>
         </form>
       </section>
+      ) : (
+        <section className="rounded-xl border border-slate-700 bg-slate-900/70 p-6">
+          <h2 className="mb-2 text-lg font-semibold">Add Custody Event</h2>
+          <p className="text-sm text-slate-400">
+            Your current local role cannot add custody events.
+          </p>
+        </section>
+      )}
     </main>
   );
 }

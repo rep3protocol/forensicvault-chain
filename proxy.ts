@@ -13,6 +13,8 @@ const protectedPrefixes = [
   "/ledger",
   "/anchors",
   "/tamper-test",
+  "/guard",
+  "/admin",
 ];
 
 export function proxy(request: NextRequest) {
