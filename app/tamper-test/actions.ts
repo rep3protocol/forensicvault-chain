@@ -4,6 +4,11 @@ import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { redirect } from "next/navigation";
 import { assertPermission } from "@/lib/auth/requirePermission";
+import {
+  getAuditActorFromUser,
+  recordAuditEventSafe,
+} from "@/lib/audit/log";
+import { AUDIT_ACTIONS } from "@/lib/audit/types";
 import { stableJson } from "@/lib/crypto/hash";
 import { prisma } from "@/lib/prisma";
 
@@ -72,7 +77,7 @@ function tamperPayloadJson(payloadJson: string) {
 }
 
 export async function tamperWithBlock(formData: FormData) {
-  await assertPermission(
+  const user = await assertPermission(
     "USE_TAMPER_TEST",
     "Your current local role does not allow running tamper test actions.",
   );
@@ -148,11 +153,27 @@ export async function tamperWithBlock(formData: FormData) {
     });
   }
 
+  await recordAuditEventSafe({
+    ...getAuditActorFromUser(user),
+    action: AUDIT_ACTIONS.TAMPER_TEST_BLOCK_TAMPERED,
+    category: "TAMPER_TEST",
+    severity: "HIGH",
+    outcome: "SUCCESS",
+    targetType: "LedgerBlock",
+    targetId: block.id,
+    targetLabel: `height-${block.height}`,
+    summary: `Tamper test modified ledger block ${block.height}`,
+    metadata: {
+      blockHeight: block.height,
+      backupFileCount: 1,
+    },
+  });
+
   redirect("/tamper-test");
 }
 
 export async function restoreLatestTamperBackup() {
-  await assertPermission(
+  const user = await assertPermission(
     "USE_TAMPER_TEST",
     "Your current local role does not allow running tamper test actions.",
   );
@@ -202,6 +223,22 @@ export async function restoreLatestTamperBackup() {
         },
       });
     }
+  });
+
+  await recordAuditEventSafe({
+    ...getAuditActorFromUser(user),
+    action: AUDIT_ACTIONS.TAMPER_TEST_RESTORED,
+    category: "TAMPER_TEST",
+    severity: "NOTICE",
+    outcome: "SUCCESS",
+    targetType: "LedgerBlock",
+    targetId: backup.blockId,
+    targetLabel: `height-${backup.blockHeight}`,
+    summary: `Tamper test restored ledger block ${backup.blockHeight}`,
+    metadata: {
+      blockHeight: backup.blockHeight,
+      backupFilename: latest,
+    },
   });
 
   redirect("/tamper-test");

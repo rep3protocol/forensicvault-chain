@@ -22,6 +22,7 @@ const links: NavLink[] = [
   { href: "/wallet", label: "Wallet", permission: "VIEW_WALLET" },
   { href: "/verify", label: "Verify", permission: "VERIFY_EVIDENCE" },
   { href: "/tamper-test", label: "Tamper Test", permission: "USE_TAMPER_TEST" },
+  { href: "/audit", label: "Audit", permission: "VIEW_AUDIT_LOG" },
   { href: "/admin/users", label: "Admin", permission: "MANAGE_USERS" },
 ];
 

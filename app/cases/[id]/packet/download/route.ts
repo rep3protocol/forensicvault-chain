@@ -1,6 +1,12 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { denyUnlessDownloadPermission } from "@/lib/auth/downloadAccess";
+import { getCurrentUserWithRole } from "@/lib/auth/requirePermission";
+import {
+  getAuditActorFromUser,
+  recordAuditEventSafe,
+} from "@/lib/audit/log";
+import { AUDIT_ACTIONS } from "@/lib/audit/types";
 import { getCasePacketData } from "@/lib/cases/packet";
 import { createCasePacketPdf } from "@/lib/cases/packetPdf";
 
@@ -24,8 +30,29 @@ export async function GET(
     return NextResponse.json({ error: "Case not found." }, { status: 404 });
   }
 
-  const pdfBytes = await createCasePacketPdf(packet);
+  const session = await getCurrentUserWithRole();
   const fileName = safeFileName(packet.caseItem.title);
+
+  await recordAuditEventSafe({
+    ...(session ? getAuditActorFromUser(session.user) : {}),
+    action: AUDIT_ACTIONS.CASE_PACKET_EXPORTED,
+    category: "CASE_PACKET",
+    severity: "NOTICE",
+    outcome: "SUCCESS",
+    targetType: "Case",
+    targetId: packet.caseItem.id,
+    targetLabel: packet.caseItem.title,
+    route: `/cases/${id}/packet/download`,
+    method: "GET",
+    summary: `Case packet exported: ${packet.caseItem.title}`,
+    metadata: {
+      caseId: packet.caseItem.id,
+      filename: `forensicvault-case-packet-${fileName}.pdf`,
+      evidenceCount: packet.integritySummary.totalEvidenceItems,
+    },
+  });
+
+  const pdfBytes = await createCasePacketPdf(packet);
 
   return new Response(Buffer.from(pdfBytes), {
     status: 200,

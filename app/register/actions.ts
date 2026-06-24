@@ -2,6 +2,11 @@
 
 import { randomBytes } from "node:crypto";
 import { redirect } from "next/navigation";
+import {
+  getAuditActorFromUser,
+  recordAuditEventSafe,
+} from "@/lib/audit/log";
+import { AUDIT_ACTIONS } from "@/lib/audit/types";
 import { hashPassword } from "@/lib/auth/password";
 import { isUserRole } from "@/lib/auth/roles";
 import { createSessionCookie } from "@/lib/auth/session";
@@ -45,5 +50,20 @@ export async function register(formData: FormData) {
 
   await ensureWalletForUser(user);
   await createSessionCookie(user.id);
+
+  await recordAuditEventSafe({
+    ...getAuditActorFromUser(user),
+    action: AUDIT_ACTIONS.USER_REGISTERED,
+    category: "AUTH",
+    severity: "NOTICE",
+    outcome: "SUCCESS",
+    targetType: "User",
+    targetId: user.id,
+    targetLabel: user.name,
+    route: "/register",
+    summary: `User registered: ${user.name}`,
+    metadata: { role: user.role },
+  });
+
   redirect("/");
 }

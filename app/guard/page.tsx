@@ -290,6 +290,7 @@ export default async function GuardPage() {
     ? can(session.role, "CLEAR_SHIELD_ACKNOWLEDGEMENT")
     : false;
   const canManageUsers = session ? can(session.role, "MANAGE_USERS") : false;
+  const canViewAudit = session ? can(session.role, "VIEW_AUDIT_LOG") : false;
   const scan = await scanShield();
   const activeCounts = countAlertsBySeverity(scan.unacknowledgedAlerts);
   const criticalHighAlerts = scan.unacknowledgedAlerts.filter(
@@ -670,6 +671,56 @@ export default async function GuardPage() {
               <AlertCard key={alert.id} alert={alert} {...alertInteractionProps} />
             ))}
           </div>
+        )}
+      </section>
+
+      <section className="mb-10">
+        <h2 className="mb-4 text-sm font-medium tracking-wide text-slate-300 uppercase">
+          Audit Integrity
+        </h2>
+        <div className="mb-4 grid gap-4 md:grid-cols-3">
+          <SummaryCard
+            label="Audit Chain Status"
+            value={scan.metrics.auditChainValid ? "Valid" : "Invalid"}
+            detail={
+              scan.metrics.auditChainValid
+                ? "Hash-linked audit log validated"
+                : `${scan.metrics.auditValidationErrorCount} validation error(s)`
+            }
+          />
+          <SummaryCard
+            label="Total Audit Events"
+            value={scan.metrics.totalAuditEvents}
+          />
+          <SummaryCard
+            label="Latest Sequence"
+            value={scan.metrics.latestAuditSequence ?? "—"}
+          />
+          <SummaryCard
+            label="Latest Audit Hash"
+            value={shortenHash(scan.metrics.latestAuditHash, 12, 8)}
+          />
+          <SummaryCard
+            label="Recent Denied Events"
+            value={scan.metrics.recentDeniedAuditEvents}
+            detail="Last 7 days"
+          />
+          <SummaryCard
+            label="Recent High / Critical"
+            value={
+              scan.metrics.recentHighAuditEvents +
+              scan.metrics.recentCriticalAuditEvents
+            }
+            detail="Last 7 days"
+          />
+        </div>
+        {canViewAudit && (
+          <Link
+            href="/audit"
+            className="inline-flex rounded border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-200 transition-colors hover:border-slate-600 hover:bg-slate-800"
+          >
+            Open Audit Log
+          </Link>
         )}
       </section>
 

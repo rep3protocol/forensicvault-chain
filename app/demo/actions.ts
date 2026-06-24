@@ -6,6 +6,11 @@ import type { Wallet } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { assertPermission } from "@/lib/auth/requirePermission";
+import {
+  getAuditActorFromUser,
+  recordAuditEventSafe,
+} from "@/lib/audit/log";
+import { AUDIT_ACTIONS } from "@/lib/audit/types";
 import { ensureWalletForUser, getSignerPublicKey } from "@/lib/auth/wallet";
 import { sha256Buffer, sha256String, stableJson } from "@/lib/crypto/hash";
 import { createLedgerBlock } from "@/lib/ledger/createBlock";
@@ -244,11 +249,33 @@ export async function createDemoCase() {
   }
 
   revalidateDemoPaths(caseItem.id, originalEvidence?.id);
+
+  const duplicateHashGroupCreated = createdEvidence.some((item, index, all) =>
+    all.some((other, otherIndex) => otherIndex !== index && other.sha256Hash === item.sha256Hash),
+  );
+
+  await recordAuditEventSafe({
+    ...getAuditActorFromUser(user),
+    action: AUDIT_ACTIONS.DEMO_CASE_CREATED,
+    category: "DEMO",
+    severity: "NOTICE",
+    outcome: "SUCCESS",
+    targetType: "Case",
+    targetId: caseItem.id,
+    targetLabel: caseItem.title,
+    summary: `Demo case created: ${caseItem.title}`,
+    metadata: {
+      demoCaseId: caseItem.id,
+      evidenceCount: createdEvidence.length,
+      duplicateHashGroupCreated,
+    },
+  });
+
   redirect("/demo");
 }
 
 export async function resetDemoData() {
-  await assertPermission(
+  const user = await assertPermission(
     "RUN_DEMO_ACTIONS",
     "Your current local role does not allow running demo actions.",
   );
@@ -286,6 +313,18 @@ export async function resetDemoData() {
   }
 
   await rm(DEMO_STORAGE_DIR, { recursive: true, force: true });
+
+  await recordAuditEventSafe({
+    ...getAuditActorFromUser(user),
+    action: AUDIT_ACTIONS.DEMO_ACTION_RUN,
+    category: "DEMO",
+    severity: "NOTICE",
+    outcome: "SUCCESS",
+    summary: "Demo data reset",
+    metadata: {
+      demoCasesRemoved: demoCaseIds.length,
+    },
+  });
 
   revalidateDemoPaths();
   redirect("/demo");

@@ -3,6 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { assertPermission } from "@/lib/auth/requirePermission";
+import {
+  getAuditActorFromUser,
+  recordAuditEventSafe,
+} from "@/lib/audit/log";
+import { AUDIT_ACTIONS } from "@/lib/audit/types";
 import { prisma } from "@/lib/prisma";
 
 function stringValue(formData: FormData, key: string) {
@@ -80,6 +85,25 @@ export async function acknowledgeShieldAlert(formData: FormData) {
     },
   });
 
+  await recordAuditEventSafe({
+    ...getAuditActorFromUser(user),
+    action: AUDIT_ACTIONS.SHIELD_ALERT_ACKNOWLEDGED,
+    category: "SHIELD",
+    severity: "NOTICE",
+    outcome: "SUCCESS",
+    targetType: "ShieldAlert",
+    targetId: alertId,
+    targetLabel: alertTitle,
+    summary: `Shield alert acknowledged: ${alertTitle}`,
+    metadata: {
+      alertId,
+      severity,
+      category,
+      noteLength: note?.length ?? 0,
+      acknowledgedByName: user.name,
+    },
+  });
+
   revalidatePath("/guard");
   redirect("/guard");
 }
@@ -120,6 +144,24 @@ export async function clearShieldAcknowledgement(formData: FormData) {
             acknowledgedAt: existing.acknowledgedAt.toISOString(),
           })
         : null,
+    },
+  });
+
+  await recordAuditEventSafe({
+    ...getAuditActorFromUser(user),
+    action: AUDIT_ACTIONS.SHIELD_ACKNOWLEDGEMENT_CLEARED,
+    category: "SHIELD",
+    severity: "NOTICE",
+    outcome: "SUCCESS",
+    targetType: "ShieldAlert",
+    targetId: alertId,
+    targetLabel: existing?.alertTitle ?? alertId,
+    summary: "Shield acknowledgement cleared",
+    metadata: {
+      alertId,
+      severity: existing?.severity ?? null,
+      category: existing?.category ?? null,
+      acknowledgedByName: existing?.acknowledgedByName ?? null,
     },
   });
 

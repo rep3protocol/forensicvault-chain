@@ -2,6 +2,12 @@ import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { denyUnlessDownloadPermission } from "@/lib/auth/downloadAccess";
+import { getCurrentUserWithRole } from "@/lib/auth/requirePermission";
+import {
+  getAuditActorFromUser,
+  recordAuditEventSafe,
+} from "@/lib/audit/log";
+import { AUDIT_ACTIONS } from "@/lib/audit/types";
 import { getDuplicateEvidenceForItem } from "@/lib/evidence/duplicates";
 import { prisma } from "@/lib/prisma";
 
@@ -69,6 +75,26 @@ export async function GET(
   const duplicateInfo = await getDuplicateEvidenceForItem(evidence.id);
   const duplicateDetected = (duplicateInfo?.duplicates.length ?? 0) > 0;
   const latestVerification = evidence.verifications[0];
+  const session = await getCurrentUserWithRole();
+
+  await recordAuditEventSafe({
+    ...(session ? getAuditActorFromUser(session.user) : {}),
+    action: AUDIT_ACTIONS.EVIDENCE_REPORT_EXPORTED,
+    category: "REPORT",
+    severity: "NOTICE",
+    outcome: "SUCCESS",
+    targetType: "EvidenceItem",
+    targetId: evidence.id,
+    targetLabel: evidence.originalName,
+    route: `/reports/${id}/download`,
+    method: "GET",
+    summary: `Evidence report exported: ${evidence.originalName}`,
+    metadata: {
+      evidenceId: evidence.id,
+      caseId: evidence.caseId,
+      reportType: "PDF",
+    },
+  });
 
   const registrationBlock =
     evidence.registeredBlockHeight !== null

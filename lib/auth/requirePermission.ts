@@ -1,9 +1,16 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import type { Permission } from "@/lib/auth/permissions";
 import { can, canAny } from "@/lib/auth/permissions";
 import { normalizeRole } from "@/lib/auth/roles";
 import { getCurrentUser, requireCurrentUser } from "@/lib/auth/session";
 import type { User } from "@prisma/client";
+import {
+  getAuditActorFromUser,
+  recordAuditEventSafe,
+} from "@/lib/audit/log";
+import { getAuditRequestContext } from "@/lib/audit/requestContext";
+import { AUDIT_ACTIONS } from "@/lib/audit/types";
 
 export type CurrentUserWithRole = {
   user: User;
@@ -24,6 +31,28 @@ export function forbidden(): never {
   redirect("/forbidden");
 }
 
+async function logPermissionDenied(
+  session: CurrentUserWithRole,
+  permission: Permission | string,
+  route?: string | null,
+) {
+  const ctx = await getAuditRequestContext();
+  await recordAuditEventSafe({
+    ...getAuditActorFromUser(session.user),
+    action: AUDIT_ACTIONS.PERMISSION_DENIED,
+    category: "PERMISSION",
+    severity: "WARNING",
+    outcome: "DENIED",
+    permission,
+    route: route ?? ctx.route ?? null,
+    method: ctx.method,
+    ipAddress: ctx.ipAddress ?? null,
+    userAgent: ctx.userAgent ?? null,
+    summary: `Permission denied for ${permission}`,
+    metadata: { permission },
+  });
+}
+
 export async function requirePermission(permission: Permission): Promise<User> {
   const session = await getCurrentUserWithRole();
   if (!session) {
@@ -31,6 +60,9 @@ export async function requirePermission(permission: Permission): Promise<User> {
   }
 
   if (!can(session.role, permission)) {
+    const headerStore = await headers();
+    const pathname = headerStore.get("x-invoke-path") ?? headerStore.get("referer");
+    await logPermissionDenied(session, permission, pathname);
     forbidden();
   }
 
@@ -46,6 +78,9 @@ export async function requireAnyPermission(
   }
 
   if (!canAny(session.role, permissions)) {
+    const headerStore = await headers();
+    const pathname = headerStore.get("x-invoke-path") ?? headerStore.get("referer");
+    await logPermissionDenied(session, permissions.join(","), pathname);
     forbidden();
   }
 
@@ -58,6 +93,8 @@ export async function assertPermission(
 ): Promise<User> {
   const user = await requireCurrentUser();
   if (!can(user.role, permission)) {
+    const session = { user, role: normalizeRole(user.role) };
+    await logPermissionDenied(session, permission);
     throw new Error(message);
   }
   return user;
@@ -69,6 +106,8 @@ export async function assertAnyPermission(
 ): Promise<User> {
   const user = await requireCurrentUser();
   if (!canAny(user.role, permissions)) {
+    const session = { user, role: normalizeRole(user.role) };
+    await logPermissionDenied(session, permissions.join(","));
     throw new Error(message);
   }
   return user;

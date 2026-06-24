@@ -228,6 +228,27 @@ Acknowledgements document that an investigator reviewed a deterministic alert,
 but they do not delete the alert, change the underlying evidence, modify the
 ledger, or prove the issue is resolved.
 
+## ForensicVault Audit Log
+
+The `/audit` route provides a local app-level audit log for security review. It
+records important actions such as authentication, permission denials, role changes,
+evidence uploads, custody events, verifications, exports, anchor activity, Shield
+acknowledgements, and tamper-test usage.
+
+Audit events are stored locally in SQLite and linked through a hash chain so the
+log is tamper-evident, not tamper-proof. Admin and Supervisor roles can view,
+export, and validate the audit log. Investigators and other roles may still
+generate audit records through normal actions without full audit UI access.
+
+Shield includes an **Audit Integrity** section with chain status, event counts,
+and alerts when the chain is invalid or recent denials/high-severity events are
+detected.
+
+This audit log does not replace the forensic evidence ledger, custody event
+chain, Shield event log, or external anchoring. It is local MVP logging only —
+not a production SIEM, not tamper-proof security, and not a legal admissibility
+guarantee.
+
 ## Anchor History
 
 The `/anchors` page can save local anchor snapshots and track publication URLs
@@ -250,6 +271,8 @@ Local MVP / testnet simulation.
 
 ForensicVault Chain is intended for local development, demos, training, and exploration of forensic integrity workflows. It does not publish to a real blockchain or timestamp authority automatically.
 
+Current release: **v0.1.7-audit-log**
+
 Current release status: local-first portfolio MVP / testnet simulation. It is
 tamper-evident, not tamper-proof; it has no real blockchain, no real
 cryptocurrency, no legal admissibility guarantee, and no production-grade
@@ -261,7 +284,6 @@ security claim.
 - Streaming file uploads
 - RFC 3161 timestamping
 - GitHub/Gist anchoring
-- Audit log export
 - Role-based permissions
 - Stronger evidence inventory workflows
 - Deployment hardening

@@ -648,3 +648,106 @@ export function roleSecurityAlerts(input: {
 
   return alerts;
 }
+
+export function auditAlerts(input: {
+  totalAuditEvents: number;
+  auditChainValid: boolean;
+  auditValidationErrorCount: number;
+  recentDeniedAuditEvents: number;
+  recentHighAuditEvents: number;
+  recentCriticalAuditEvents: number;
+  firstValidationError?: string | null;
+}): ShieldAlert[] {
+  const {
+    totalAuditEvents,
+    auditChainValid,
+    auditValidationErrorCount,
+    recentDeniedAuditEvents,
+    recentHighAuditEvents,
+    recentCriticalAuditEvents,
+    firstValidationError,
+  } = input;
+
+  const alerts: ShieldAlert[] = [];
+
+  if (totalAuditEvents === 0) {
+    alerts.push(
+      createAlert({
+        id: "audit-no-events",
+        severity: "MEDIUM",
+        category: "security",
+        title: "No audit log events recorded",
+        description: "The local audit log has no recorded events yet.",
+        reference: "Audit log",
+        reason: "totalAuditEvents is 0.",
+        action: "Use the app normally or verify audit logging is enabled.",
+      }),
+    );
+    return alerts;
+  }
+
+  if (!auditChainValid) {
+    alerts.push(
+      createAlert({
+        id: "audit-chain-invalid",
+        severity: "HIGH",
+        category: "security",
+        title: "Audit log chain invalid",
+        description:
+          "The local audit log hash chain does not validate. This may indicate database edits, restore, or corruption.",
+        reference: "Audit log",
+        reason:
+          firstValidationError ??
+          `${auditValidationErrorCount} validation error(s) detected.`,
+        action:
+          "Review audit log validation errors and check for local database rewrite, restore, or corruption.",
+      }),
+    );
+  } else {
+    alerts.push(
+      createAlert({
+        id: "audit-chain-valid",
+        severity: "INFO",
+        category: "security",
+        title: "Audit log chain valid",
+        description: "The local hash-linked audit log chain validated successfully.",
+        reference: "Audit log",
+        reason: "Audit validation returned valid=true.",
+        action: "Continue reviewing Shield alerts and local workflow activity.",
+      }),
+    );
+  }
+
+  if (recentDeniedAuditEvents > 0) {
+    alerts.push(
+      createAlert({
+        id: "audit-recent-denied",
+        severity: "MEDIUM",
+        category: "security",
+        title: "Recent permission denials detected",
+        description: "Recent audit events include permission denials.",
+        reference: "Audit log",
+        reason: `${recentDeniedAuditEvents} denied event(s) in the recent audit window.`,
+        action: "Review the Audit Log for unauthorized or mistaken access attempts.",
+      }),
+    );
+  }
+
+  const recentSevere = recentHighAuditEvents + recentCriticalAuditEvents;
+  if (recentSevere > 0) {
+    alerts.push(
+      createAlert({
+        id: "audit-recent-high",
+        severity: "HIGH",
+        category: "security",
+        title: "Recent high-severity audit events detected",
+        description: "Recent audit events include high or critical severity entries.",
+        reference: "Audit log",
+        reason: `${recentSevere} high/critical event(s) in the recent audit window.`,
+        action: "Review the Audit Log.",
+      }),
+    );
+  }
+
+  return alerts;
+}

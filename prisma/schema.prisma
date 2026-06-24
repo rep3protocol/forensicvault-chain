@@ -203,3 +203,40 @@ model AnchorRecord {
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 }
+
+model AuditLog {
+  id               String   @id @default(cuid())
+  sequence         Int      @unique
+  timestamp        DateTime @default(now())
+  actorId          String?
+  actorName        String?
+  actorEmail       String?
+  actorRole        String?
+  action           String
+  category         String
+  severity         String
+  outcome          String
+  targetType       String?
+  targetId         String?
+  targetLabel      String?
+  route            String?
+  method           String?
+  permission       String?
+  ipAddress        String?
+  userAgent        String?
+  summary          String
+  metadataJson     String?
+  previousAuditHash String
+  auditHash        String
+  createdAt        DateTime @default(now())
+
+  @@index([timestamp])
+  @@index([actorId])
+  @@index([action])
+  @@index([category])
+  @@index([severity])
+  @@index([outcome])
+  @@index([targetType, targetId])
+  @@index([auditHash])
+  @@index([previousAuditHash])
+}
