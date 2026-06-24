@@ -1,4 +1,5 @@
 import type { LedgerTransaction } from "@prisma/client";
+import { summarizeCustodySignatureEvents } from "@/lib/custody/signatures";
 import { getDuplicateCountsByHashes } from "@/lib/evidence/duplicates";
 import { prisma } from "@/lib/prisma";
 
@@ -127,6 +128,9 @@ export async function getCasePacketData(caseId: string) {
     0,
   );
   const failedVerifications = totalVerifications - matchedVerifications;
+  const signatureSummary = summarizeCustodySignatureEvents(
+    caseItem.evidence.flatMap((item) => item.custodyEvents),
+  );
 
   return {
     caseItem,
@@ -145,6 +149,10 @@ export async function getCasePacketData(caseId: string) {
       failedVerifications,
       latestLedgerBlockHeight: latestLedgerBlock?.height ?? null,
       latestLedgerBlockHash: latestLedgerBlock?.blockHash ?? null,
+      custodySignatureStatus: signatureSummary.status,
+      verifiedCustodySignatures: signatureSummary.verifiedEvents,
+      missingCustodySignatures: signatureSummary.missingSignatureEvents,
+      failedCustodySignatures: signatureSummary.failedEvents,
     },
     ledger: {
       latestLedgerBlock,

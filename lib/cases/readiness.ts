@@ -1,5 +1,5 @@
 import { compareCurrentAnchorToLatestRecord, getLatestAnchorRecord } from "@/lib/anchors/history";
-import { getSignatureReadinessForEvents } from "@/lib/custody/signatureReadiness";
+import { getCustodySignatureSummaryForCase } from "@/lib/custody/signatures";
 import { getDuplicateCountsByHashes } from "@/lib/evidence/duplicates";
 import { prisma } from "@/lib/prisma";
 
@@ -91,8 +91,7 @@ export async function getCaseReadiness(caseId: string): Promise<CaseReadinessRes
   const duplicateGroupCount = [...new Set(evidence.map((item) => item.sha256Hash))].filter(
     (hash) => (duplicateCounts.get(hash) ?? 0) > 1,
   ).length;
-  const allCustodyEvents = evidence.flatMap((item) => item.custodyEvents);
-  const signatureReadiness = getSignatureReadinessForEvents(allCustodyEvents);
+  const signatureSummary = await getCustodySignatureSummaryForCase(caseId);
   const [latestAnchor, latestComparison] = await Promise.all([
     getLatestAnchorRecord(),
     compareCurrentAnchorToLatestRecord(),
@@ -183,10 +182,16 @@ export async function getCaseReadiness(caseId: string): Promise<CaseReadinessRes
     ),
     check(
       "signature-readiness",
-      "Custody signature readiness",
-      signatureReadiness.status,
-      signatureReadiness.reason,
-      signatureReadiness.action,
+      signatureSummary.status === "PASS"
+        ? "Custody signatures verify"
+        : signatureSummary.status === "INFO"
+          ? "No custody events to sign yet"
+          : signatureSummary.status === "WARNING"
+            ? "Legacy custody events missing signatures"
+            : "One or more custody signatures failed verification",
+      signatureSummary.status,
+      signatureSummary.message,
+      signatureSummary.recommendedAction,
     ),
   ];
 
@@ -195,7 +200,7 @@ export async function getCaseReadiness(caseId: string): Promise<CaseReadinessRes
     checks,
     warningCount: checks.filter((item) => item.status === "WARNING").length,
     failCount: checks.filter((item) => item.status === "FAIL").length,
-    signatureStatus: signatureReadiness.status,
+    signatureStatus: signatureSummary.status,
   };
 }
 

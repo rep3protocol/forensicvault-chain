@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { PrintButton } from "@/components/PrintButton";
+import { summarizeCustodySignatureEvents } from "@/lib/custody/signatures";
 import { getDuplicateEvidenceForItem } from "@/lib/evidence/duplicates";
 
 function formatDate(value?: Date | null) {
@@ -75,6 +76,7 @@ export default async function ReportDetailPage({
 
   const generatedAt = new Date();
   const chainStatus = custodyStatus(evidence.registeredTxHash, evidence.custodyEvents);
+  const signatureSummary = summarizeCustodySignatureEvents(evidence.custodyEvents);
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10 text-slate-100 print:bg-white print:text-black">
@@ -237,6 +239,33 @@ export default async function ReportDetailPage({
         ) : (
           <p>No verification has been recorded for this evidence item.</p>
         )}
+      </section>
+
+      <section className="print-break mb-6 rounded-xl border border-slate-700 bg-slate-900/70 p-6">
+        <h2 className="mb-4 text-2xl font-semibold">Custody Signature Verification</h2>
+        <dl className="grid gap-4 md:grid-cols-2">
+          <div>
+            <dt className="text-sm text-slate-400 print:text-black">Status</dt>
+            <dd>{signatureSummary.status}</dd>
+          </div>
+          <div>
+            <dt className="text-sm text-slate-400 print:text-black">Verified Events</dt>
+            <dd>
+              {signatureSummary.verifiedEvents} / {signatureSummary.totalCustodyEvents}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-sm text-slate-400 print:text-black">Missing Signatures</dt>
+            <dd>{signatureSummary.missingSignatureEvents}</dd>
+          </div>
+          <div>
+            <dt className="text-sm text-slate-400 print:text-black">Failed Signatures</dt>
+            <dd>{signatureSummary.failedEvents}</dd>
+          </div>
+        </dl>
+        <p className="mt-4 text-sm text-slate-300 print:text-black">
+          {signatureSummary.message}
+        </p>
       </section>
 
       <section className="print-break mb-6 rounded-xl border border-slate-700 bg-slate-900/70 p-6">

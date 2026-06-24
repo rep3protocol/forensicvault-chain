@@ -4,15 +4,15 @@ import {
   anchorAlerts,
   caseReadinessAlerts,
   custodyAlerts,
+  custodySignatureAlerts,
   duplicateAlerts,
   evidenceAlerts,
   ledgerAlerts,
-  signatureReadinessAlerts,
   tamperBackupAlerts,
 } from "@/lib/shield/rules";
 import { getAnchorHistorySummary } from "@/lib/anchors/history";
 import { getCaseReadinessSummaries } from "@/lib/cases/readiness";
-import { getSignatureReadinessForEvents } from "@/lib/custody/signatureReadiness";
+import { summarizeCustodySignatureEvents } from "@/lib/custody/signatures";
 import { compareSeverity } from "@/lib/shield/severity";
 import {
   computeRawShieldStatus,
@@ -146,14 +146,8 @@ export async function scanShield(): Promise<ShieldScanResult> {
   ]);
 
   const duplicateGroups = getDuplicateGroups(evidenceItems);
-  const signatureReadiness = getSignatureReadinessForEvents(
-    evidenceItems.flatMap((evidence) => evidence.custodyEvents),
-  );
-  const signatureReadinessWarningCount =
-    signatureReadiness.status === "WARNING"
-      ? signatureReadiness.missingSignatureCount +
-        signatureReadiness.placeholderPublicKeyCount
-      : 0;
+  const allCustodyEvents = evidenceItems.flatMap((evidence) => evidence.custodyEvents);
+  const custodySignatureSummary = summarizeCustodySignatureEvents(allCustodyEvents);
   const casesWithReadinessWarnings = caseReadinessSummaries.filter(
     (caseItem) => caseItem.warningCount > 0 || caseItem.failCount > 0,
   );
@@ -174,7 +168,12 @@ export async function scanShield(): Promise<ShieldScanResult> {
       warningCaseCount: casesWithReadinessWarnings.length,
       caseExamples: casesWithReadinessWarnings.slice(0, 3),
     }),
-    ...signatureReadinessAlerts(signatureReadinessWarningCount),
+    ...custodySignatureAlerts({
+      totalCustodyEvents: custodySignatureSummary.totalCustodyEvents,
+      verifiedEvents: custodySignatureSummary.verifiedEvents,
+      failedEvents: custodySignatureSummary.failedEvents,
+      missingSignatureEvents: custodySignatureSummary.missingSignatureEvents,
+    }),
   ].sort((a, b) => compareSeverity(a.severity, b.severity));
   const activeAlertIds = rawAlerts.map((alert) => alert.id);
   const [acknowledgements, recentEvents] = await Promise.all([
@@ -256,7 +255,10 @@ export async function scanShield(): Promise<ShieldScanResult> {
     latestAnchorComparisonStatus: anchorHistorySummary.latestAnchorComparisonStatus,
     duplicateAnchorRecordGroups: anchorHistorySummary.duplicateAnchorRecordGroupCount,
     caseReadinessWarningCount: casesWithReadinessWarnings.length,
-    signatureReadinessWarningCount,
+    signedCustodyEvents: custodySignatureSummary.signedEvents,
+    verifiedCustodySignatures: custodySignatureSummary.verifiedEvents,
+    failedCustodySignatures: custodySignatureSummary.failedEvents,
+    missingCustodySignatures: custodySignatureSummary.missingSignatureEvents,
   };
   const status = computeShieldStatus(unacknowledgedAlerts);
   const rawStatus = computeRawShieldStatus(alerts);

@@ -79,7 +79,10 @@ export type ShieldMetrics = {
   latestAnchorComparisonStatus: string;
   duplicateAnchorRecordGroups: number;
   caseReadinessWarningCount: number;
-  signatureReadinessWarningCount: number;
+  signedCustodyEvents: number;
+  verifiedCustodySignatures: number;
+  failedCustodySignatures: number;
+  missingCustodySignatures: number;
 };
 
 export type ShieldScanResult = {

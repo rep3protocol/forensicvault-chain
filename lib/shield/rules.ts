@@ -485,35 +485,79 @@ export function caseReadinessAlerts(input: {
   ];
 }
 
-export function signatureReadinessAlerts(warningCount: number): ShieldAlert[] {
-  if (warningCount === 0) {
+export function custodySignatureAlerts(input: {
+  totalCustodyEvents: number;
+  verifiedEvents: number;
+  failedEvents: number;
+  missingSignatureEvents: number;
+}): ShieldAlert[] {
+  const {
+    totalCustodyEvents,
+    verifiedEvents,
+    failedEvents,
+    missingSignatureEvents,
+  } = input;
+
+  if (totalCustodyEvents === 0) {
     return [
       createAlert({
-        id: "signature-readiness-clear",
+        id: "custody-signatures-none",
         severity: "INFO",
         category: "custody",
-        title: "Custody signature readiness clear",
-        description:
-          "Custody events with recorded signing fields do not currently show missing or placeholder signature data.",
+        title: "No custody signatures to verify",
+        description: "No custody events exist yet for local signature verification.",
         reference: "Custody events",
-        reason: "Signature readiness warning count is 0.",
-        action: "Continue reviewing custody signatures alongside hash linkage.",
+        reason: "Custody event count is 0.",
+        action: "Add custody events when chain-of-custody activity occurs.",
+      }),
+    ];
+  }
+
+  if (failedEvents > 0) {
+    return [
+      createAlert({
+        id: "custody-signatures-failed",
+        severity: "HIGH",
+        category: "custody",
+        title: "Custody signature verification failed",
+        description:
+          "One or more custody events have signatures that do not verify against the stored event hash and public key.",
+        reference: "Custody events",
+        reason: `${failedEvents} custody event(s) failed local signature verification.`,
+        action:
+          "Review custody events with failed signature verification before relying on this record outside local MVP testing.",
+      }),
+    ];
+  }
+
+  if (missingSignatureEvents > 0) {
+    return [
+      createAlert({
+        id: "custody-signatures-missing",
+        severity: "MEDIUM",
+        category: "custody",
+        title: "Custody events missing local signatures",
+        description:
+          "Some custody events were created before local signing was enabled or are missing signature fields.",
+        reference: "Custody events",
+        reason: `${missingSignatureEvents} custody event(s) are missing local signatures.`,
+        action:
+          "Legacy custody events are not auto-signed. Add new signed custody events or accept the limitation for older records.",
       }),
     ];
   }
 
   return [
     createAlert({
-      id: "signature-readiness-warnings",
-      severity: "MEDIUM",
+      id: "custody-signatures-verify",
+      severity: "INFO",
       category: "custody",
-      title: "Custody signature readiness warnings exist",
+      title: "Custody signatures verify",
       description:
-        "Some custody events have missing signature fields or placeholder/local public key values.",
+        "All custody events have stored local signatures that verify against their event hash and public key.",
       reference: "Custody events",
-      reason: `${warningCount} custody event(s) need signature readiness review.`,
-      action:
-        "Review custody signing fields before relying on this record outside local MVP testing.",
+      reason: `${verifiedEvents} of ${totalCustodyEvents} custody event(s) verified.`,
+      action: "Continue reviewing custody hash linkage and report exports.",
     }),
   ];
 }

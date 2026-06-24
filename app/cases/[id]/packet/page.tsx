@@ -113,6 +113,18 @@ export default async function CasePacketPage({ params }: CasePacketPageProps) {
           </Detail>
           <Detail label="Matched Verifications">{integritySummary.matchedVerifications}</Detail>
           <Detail label="Failed/Non-Matching Verifications">{integritySummary.failedVerifications}</Detail>
+          <Detail label="Custody Signature Status">
+            {integritySummary.custodySignatureStatus}
+          </Detail>
+          <Detail label="Verified Custody Signatures">
+            {integritySummary.verifiedCustodySignatures}
+          </Detail>
+          <Detail label="Missing Custody Signatures">
+            {integritySummary.missingCustodySignatures}
+          </Detail>
+          <Detail label="Failed Custody Signatures">
+            {integritySummary.failedCustodySignatures}
+          </Detail>
           <Detail label="Latest Ledger Block Height">
             {integritySummary.latestLedgerBlockHeight ?? "N/A"}
           </Detail>
