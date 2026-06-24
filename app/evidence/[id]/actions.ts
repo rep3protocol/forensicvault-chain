@@ -4,6 +4,11 @@ import { redirect } from "next/navigation";
 import { ensureUserSigningKey } from "@/lib/auth/signingKey";
 import { assertPermission } from "@/lib/auth/requirePermission";
 import { getSignerPublicKey, getWalletForUserOrDefault } from "@/lib/auth/wallet";
+import {
+  getAuditActorFromUser,
+  recordAuditEventSafe,
+} from "@/lib/audit/log";
+import { AUDIT_ACTIONS } from "@/lib/audit/types";
 import { sha256String, stableJson } from "@/lib/crypto/hash";
 import { signCustodyPayload } from "@/lib/crypto/localSigning";
 import { createLedgerBlock } from "@/lib/ledger/createBlock";
@@ -20,6 +25,7 @@ export async function addCustodyEvent(evidenceId: string, formData: FormData) {
 
   const evidence = await prisma.evidenceItem.findUnique({
     where: { id: evidenceId },
+    include: { case: { select: { id: true, title: true } } },
   });
 
   if (!evidence) {
@@ -79,7 +85,7 @@ export async function addCustodyEvent(evidenceId: string, formData: FormData) {
     feeAmount: CUSTODY_FEE,
   });
 
-  await prisma.custodyEvent.create({
+  const custodyEvent = await prisma.custodyEvent.create({
     data: {
       evidenceId,
       action,
@@ -93,6 +99,32 @@ export async function addCustodyEvent(evidenceId: string, formData: FormData) {
       eventHash,
       blockHeight: block.height,
       txHash: transaction.txHash,
+    },
+  });
+
+  await recordAuditEventSafe({
+    ...getAuditActorFromUser(currentUser),
+    action: AUDIT_ACTIONS.CUSTODY_EVENT_ADDED,
+    category: "CUSTODY",
+    severity: "NOTICE",
+    outcome: "SUCCESS",
+    targetType: "CustodyEvent",
+    targetId: custodyEvent.id,
+    targetLabel: action,
+    summary: `Custody event added: ${action} for ${evidence.originalName}`,
+    metadata: {
+      evidenceId,
+      evidenceName: evidence.originalName,
+      caseId: evidence.caseId,
+      action,
+      eventHash,
+      previousEventHash,
+      blockHeight: block.height,
+      txHash: transaction.txHash,
+      signaturePresent: true,
+      publicKeyFingerprint: signingKey.signingKeyFingerprint ?? null,
+      tokenFee: CUSTODY_FEE,
+      notesLength: notes.length,
     },
   });
 

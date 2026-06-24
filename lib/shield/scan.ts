@@ -8,9 +8,11 @@ import {
   duplicateAlerts,
   evidenceAlerts,
   ledgerAlerts,
+  auditAlerts,
   roleSecurityAlerts,
   tamperBackupAlerts,
 } from "@/lib/shield/rules";
+import { validateAuditLogChain } from "@/lib/audit/validation";
 import { getRoleAuditSummary } from "@/lib/auth/roleAudit";
 import { getAnchorHistorySummary } from "@/lib/anchors/history";
 import { getCaseReadinessSummaries } from "@/lib/cases/readiness";
@@ -97,6 +99,11 @@ export async function scanShield(): Promise<ShieldScanResult> {
     anchorHistorySummary,
     caseReadinessSummaries,
     roleAuditSummary,
+    auditValidation,
+    totalAuditEvents,
+    recentDeniedAuditEvents,
+    recentHighAuditEvents,
+    recentCriticalAuditEvents,
   ] = await Promise.all([
     validateLedgerChain(),
     prisma.ledgerBlock.findFirst({ orderBy: { height: "desc" } }),
@@ -147,6 +154,26 @@ export async function scanShield(): Promise<ShieldScanResult> {
     getAnchorHistorySummary(),
     getCaseReadinessSummaries(),
     getRoleAuditSummary(),
+    validateAuditLogChain(),
+    prisma.auditLog.count(),
+    prisma.auditLog.count({
+      where: {
+        outcome: "DENIED",
+        timestamp: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+      },
+    }),
+    prisma.auditLog.count({
+      where: {
+        severity: "HIGH",
+        timestamp: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+      },
+    }),
+    prisma.auditLog.count({
+      where: {
+        severity: "CRITICAL",
+        timestamp: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+      },
+    }),
   ]);
 
   const duplicateGroups = getDuplicateGroups(evidenceItems);
@@ -179,6 +206,15 @@ export async function scanShield(): Promise<ShieldScanResult> {
       missingSignatureEvents: custodySignatureSummary.missingSignatureEvents,
     }),
     ...roleSecurityAlerts(roleAuditSummary),
+    ...auditAlerts({
+      totalAuditEvents,
+      auditChainValid: auditValidation.valid,
+      auditValidationErrorCount: auditValidation.errors.length,
+      recentDeniedAuditEvents,
+      recentHighAuditEvents,
+      recentCriticalAuditEvents,
+      firstValidationError: auditValidation.errors[0] ?? null,
+    }),
   ].sort((a, b) => compareSeverity(a.severity, b.severity));
   const activeAlertIds = rawAlerts.map((alert) => alert.id);
   const [acknowledgements, recentEvents] = await Promise.all([
@@ -267,6 +303,14 @@ export async function scanShield(): Promise<ShieldScanResult> {
     totalUsers: roleAuditSummary.totalUsers,
     adminCount: roleAuditSummary.adminCount,
     unrecognizedRoleCount: roleAuditSummary.unrecognizedRoleCount,
+    totalAuditEvents,
+    auditChainValid: auditValidation.valid,
+    latestAuditSequence: auditValidation.latestSequence,
+    latestAuditHash: auditValidation.latestAuditHash,
+    recentDeniedAuditEvents,
+    recentHighAuditEvents,
+    recentCriticalAuditEvents,
+    auditValidationErrorCount: auditValidation.errors.length,
   };
   const status = computeShieldStatus(unacknowledgedAlerts);
   const rawStatus = computeRawShieldStatus(alerts);

@@ -6,6 +6,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { assertPermission } from "@/lib/auth/requirePermission";
 import { getSignerPublicKey, getWalletForUserOrDefault } from "@/lib/auth/wallet";
+import {
+  getAuditActorFromUser,
+  recordAuditEventSafe,
+} from "@/lib/audit/log";
+import { AUDIT_ACTIONS } from "@/lib/audit/types";
 import { sha256Buffer } from "@/lib/crypto/hash";
 import { findDuplicateEvidenceByHash } from "@/lib/evidence/duplicates";
 import { createLedgerBlock } from "@/lib/ledger/createBlock";
@@ -154,6 +159,37 @@ export async function registerEvidence(caseId: string, formData: FormData) {
       },
     });
   });
+
+  const evidence = await prisma.evidenceItem.findFirst({
+    where: { caseId, sha256Hash },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (evidence) {
+    await recordAuditEventSafe({
+      ...getAuditActorFromUser(currentUser),
+      action: AUDIT_ACTIONS.EVIDENCE_UPLOADED,
+      category: "EVIDENCE",
+      severity: "NOTICE",
+      outcome: "SUCCESS",
+      targetType: "EvidenceItem",
+      targetId: evidence.id,
+      targetLabel: evidence.originalName,
+      summary: `Evidence uploaded: ${evidence.originalName}`,
+      metadata: {
+        caseId,
+        caseTitle: caseItem.title,
+        sha256Hash,
+        mimeType,
+        sizeBytes,
+        evidenceType,
+        duplicateCount: existingDuplicates.length + 1,
+        registeredBlockHeight: evidence.registeredBlockHeight,
+        registeredTxHash: evidence.registeredTxHash,
+        tokenFee: fee,
+      },
+    });
+  }
 
   revalidatePath(`/cases/${caseId}`);
   revalidatePath("/cases");

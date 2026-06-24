@@ -1,10 +1,27 @@
 import Link from "next/link";
 import { RoleBadge } from "@/components/RoleBadge";
 import { TestnetWarning } from "@/components/TestnetWarning";
+import {
+  getAuditActorFromUser,
+  recordAuditEventSafe,
+} from "@/lib/audit/log";
+import { AUDIT_ACTIONS } from "@/lib/audit/types";
 import { getCurrentUserWithRole } from "@/lib/auth/requirePermission";
 
 export default async function ForbiddenPage() {
   const session = await getCurrentUserWithRole();
+
+  if (session) {
+    await recordAuditEventSafe({
+      ...getAuditActorFromUser(session.user),
+      action: AUDIT_ACTIONS.FORBIDDEN_PAGE_VIEWED,
+      category: "PERMISSION",
+      severity: "WARNING",
+      outcome: "DENIED",
+      route: "/forbidden",
+      summary: "Forbidden page viewed after permission denial",
+    });
+  }
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-16 text-slate-100">

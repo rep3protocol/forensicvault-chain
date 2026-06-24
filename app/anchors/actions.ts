@@ -6,6 +6,11 @@ import {
   createAnchorRecord,
   findDuplicateAnchorRecordForCurrent,
 } from "@/lib/anchors/history";
+import {
+  getAuditActorFromUser,
+  recordAuditEventSafe,
+} from "@/lib/audit/log";
+import { AUDIT_ACTIONS } from "@/lib/audit/types";
 import { assertPermission } from "@/lib/auth/requirePermission";
 import { prisma } from "@/lib/prisma";
 
@@ -45,15 +50,53 @@ export async function saveCurrentAnchorRecord(formData: FormData) {
       });
     }
 
+    await recordAuditEventSafe({
+      ...getAuditActorFromUser(user),
+      action: AUDIT_ACTIONS.ANCHOR_DUPLICATE_PREVENTED,
+      category: "ANCHOR",
+      severity: "NOTICE",
+      outcome: "SUCCESS",
+      targetType: "AnchorRecord",
+      targetId: duplicate.id,
+      targetLabel: duplicate.label ?? `height-${duplicate.latestBlockHeight}`,
+      summary: "Duplicate anchor snapshot prevented",
+      metadata: {
+        anchorRecordId: duplicate.id,
+        latestBlockHeight: duplicate.latestBlockHeight,
+        latestBlockHash: duplicate.latestBlockHash,
+        ledgerRoot: duplicate.ledgerRoot,
+        duplicate: true,
+      },
+    });
+
     revalidatePath("/anchors");
     revalidatePath("/guard");
     redirect(`/anchors?duplicateAnchor=1&existingAnchorId=${duplicate.id}`);
   }
 
-  await createAnchorRecord({
+  const anchor = await createAnchorRecord({
     label,
     createdById: user.id,
     createdByName: user.name,
+  });
+
+  await recordAuditEventSafe({
+    ...getAuditActorFromUser(user),
+    action: AUDIT_ACTIONS.ANCHOR_SNAPSHOT_SAVED,
+    category: "ANCHOR",
+    severity: "NOTICE",
+    outcome: "SUCCESS",
+    targetType: "AnchorRecord",
+    targetId: anchor.id,
+    targetLabel: anchor.label ?? `height-${anchor.latestBlockHeight}`,
+    summary: "Anchor snapshot saved",
+    metadata: {
+      anchorRecordId: anchor.id,
+      latestBlockHeight: anchor.latestBlockHeight,
+      latestBlockHash: anchor.latestBlockHash,
+      ledgerRoot: anchor.ledgerRoot,
+      duplicate: false,
+    },
   });
 
   revalidatePath("/anchors");
@@ -62,17 +105,35 @@ export async function saveCurrentAnchorRecord(formData: FormData) {
 }
 
 export async function updateAnchorPublication(formData: FormData) {
-  await assertPermission(
+  const user = await assertPermission(
     "UPDATE_ANCHOR_PUBLICATION",
     "Your current local role does not allow updating anchor publication details.",
   );
   const id = requiredString(formData, "id");
+  const publishedUrl = optionalString(formData, "publishedUrl");
+  const publicationNotes = optionalString(formData, "publicationNotes");
 
   await prisma.anchorRecord.update({
     where: { id },
     data: {
-      publishedUrl: optionalString(formData, "publishedUrl"),
-      publicationNotes: optionalString(formData, "publicationNotes"),
+      publishedUrl,
+      publicationNotes,
+    },
+  });
+
+  await recordAuditEventSafe({
+    ...getAuditActorFromUser(user),
+    action: AUDIT_ACTIONS.ANCHOR_PUBLICATION_UPDATED,
+    category: "ANCHOR",
+    severity: "NOTICE",
+    outcome: "SUCCESS",
+    targetType: "AnchorRecord",
+    targetId: id,
+    summary: "Anchor publication details updated",
+    metadata: {
+      anchorRecordId: id,
+      publishedUrlPresent: Boolean(publishedUrl),
+      publicationNotesLength: publicationNotes?.length ?? 0,
     },
   });
 

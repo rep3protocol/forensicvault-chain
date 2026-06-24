@@ -87,6 +87,14 @@ export type ShieldMetrics = {
   totalUsers: number;
   adminCount: number;
   unrecognizedRoleCount: number;
+  totalAuditEvents: number;
+  auditChainValid: boolean;
+  latestAuditSequence: number | null;
+  latestAuditHash: string | null;
+  recentDeniedAuditEvents: number;
+  recentHighAuditEvents: number;
+  recentCriticalAuditEvents: number;
+  auditValidationErrorCount: number;
 };
 
 export type ShieldScanResult = {

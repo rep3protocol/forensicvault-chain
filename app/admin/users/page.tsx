@@ -1,13 +1,30 @@
 import Link from "next/link";
 import { RoleBadge } from "@/components/RoleBadge";
 import { TestnetWarning } from "@/components/TestnetWarning";
+import {
+  getAuditActorFromUser,
+  recordAuditEventSafe,
+} from "@/lib/audit/log";
+import { AUDIT_ACTIONS } from "@/lib/audit/types";
+import { can } from "@/lib/auth/permissions";
 import { ROLES, ROLE_LABELS } from "@/lib/auth/roles";
-import { requirePermission } from "@/lib/auth/requirePermission";
+import { getCurrentUserWithRole, requirePermission } from "@/lib/auth/requirePermission";
 import { prisma } from "@/lib/prisma";
 import { updateUserRole } from "./actions";
 
 export default async function AdminUsersPage() {
-  await requirePermission("MANAGE_USERS");
+  const user = await requirePermission("MANAGE_USERS");
+  const session = await getCurrentUserWithRole();
+
+  await recordAuditEventSafe({
+    ...getAuditActorFromUser(user),
+    action: AUDIT_ACTIONS.ADMIN_USERS_VIEWED,
+    category: "ADMIN",
+    severity: "INFO",
+    outcome: "SUCCESS",
+    route: "/admin/users",
+    summary: "Admin users page viewed",
+  });
 
   const users = await prisma.user.findMany({
     orderBy: { createdAt: "asc" },
@@ -139,6 +156,14 @@ export default async function AdminUsersPage() {
           Open Shield
         </Link>{" "}
         to review local role configuration alerts.
+        {session && can(session.role, "VIEW_AUDIT_LOG") && (
+          <>
+            {" "}
+            <Link href="/audit" className="text-cyan-300 hover:text-cyan-200">
+              View Audit Log
+            </Link>
+          </>
+        )}
       </p>
     </main>
   );

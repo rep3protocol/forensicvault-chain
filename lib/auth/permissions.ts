@@ -27,6 +27,9 @@ export const PERMISSIONS = [
   "MANAGE_USERS",
   "CHANGE_USER_ROLES",
   "VIEW_ADMIN_PANEL",
+  "VIEW_AUDIT_LOG",
+  "EXPORT_AUDIT_LOG",
+  "VALIDATE_AUDIT_LOG",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -60,6 +63,9 @@ const INVESTIGATOR_PERMISSIONS: readonly Permission[] = [
 const SUPERVISOR_PERMISSIONS: readonly Permission[] = [
   ...INVESTIGATOR_PERMISSIONS,
   "CLEAR_SHIELD_ACKNOWLEDGEMENT",
+  "VIEW_AUDIT_LOG",
+  "EXPORT_AUDIT_LOG",
+  "VALIDATE_AUDIT_LOG",
 ];
 
 const EVIDENCE_CUSTODIAN_PERMISSIONS: readonly Permission[] = [

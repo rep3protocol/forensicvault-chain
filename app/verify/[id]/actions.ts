@@ -4,6 +4,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { assertPermission } from "@/lib/auth/requirePermission";
 import { getSignerPublicKey, getWalletForUserOrDefault } from "@/lib/auth/wallet";
+import {
+  getAuditActorFromUser,
+  recordAuditEventSafe,
+} from "@/lib/audit/log";
+import { AUDIT_ACTIONS } from "@/lib/audit/types";
 import { sha256Buffer } from "@/lib/crypto/hash";
 import { createLedgerBlock } from "@/lib/ledger/createBlock";
 import { calculateIntegrityScore } from "@/lib/ledger/integrityScore";
@@ -31,6 +36,7 @@ export async function verifyEvidence(evidenceId: string, formData: FormData) {
 
   const evidence = await prisma.evidenceItem.findUnique({
     where: { id: evidenceId },
+    include: { case: { select: { id: true, title: true } } },
   });
 
   if (!evidence) {
@@ -118,6 +124,40 @@ export async function verifyEvidence(evidenceId: string, formData: FormData) {
         reason: "VERIFY_EVIDENCE",
       },
     });
+  });
+
+  const verification = await prisma.verification.findFirst({
+    where: { evidenceId },
+    orderBy: { createdAt: "desc" },
+  });
+
+  await recordAuditEventSafe({
+    ...getAuditActorFromUser(currentUser),
+    action: matched
+      ? AUDIT_ACTIONS.EVIDENCE_VERIFICATION_MATCHED
+      : AUDIT_ACTIONS.EVIDENCE_VERIFICATION_FAILED,
+    category: "VERIFICATION",
+    severity: matched ? "NOTICE" : "WARNING",
+    outcome: matched ? "SUCCESS" : "FAILURE",
+    targetType: "EvidenceItem",
+    targetId: evidenceId,
+    targetLabel: evidence.originalName,
+    summary: matched
+      ? `Evidence verification matched: ${evidence.originalName}`
+      : `Evidence verification failed: ${evidence.originalName}`,
+    metadata: {
+      evidenceId,
+      evidenceName: evidence.originalName,
+      caseId: evidence.caseId,
+      providedHash,
+      originalHash: evidence.sha256Hash,
+      matched,
+      integrityScore,
+      chainValid,
+      signaturesValid: true,
+      tokenFee: fee,
+      verificationId: verification?.id ?? null,
+    },
   });
 
   revalidatePath("/verify");
