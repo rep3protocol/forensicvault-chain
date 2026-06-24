@@ -387,8 +387,17 @@ export default async function GuardPage() {
           value={scan.metrics.crossCaseDuplicateHashGroups}
         />
         <SummaryCard
-          label="Signature Readiness Warnings"
-          value={scan.metrics.signatureReadinessWarningCount}
+          label="Verified Custody Signatures"
+          value={scan.metrics.verifiedCustodySignatures}
+          detail={`${scan.metrics.signedCustodyEvents} signed`}
+        />
+        <SummaryCard
+          label="Missing Custody Signatures"
+          value={scan.metrics.missingCustodySignatures}
+        />
+        <SummaryCard
+          label="Failed Custody Signatures"
+          value={scan.metrics.failedCustodySignatures}
         />
         <SummaryCard
           label="Duplicate Anchor Groups"
@@ -430,8 +439,12 @@ export default async function GuardPage() {
             value={scan.metrics.caseReadinessWarningCount}
           />
           <SummaryCard
-            label="Signature Readiness Warnings"
-            value={scan.metrics.signatureReadinessWarningCount}
+            label="Verified Custody Signatures"
+            value={scan.metrics.verifiedCustodySignatures}
+          />
+          <SummaryCard
+            label="Missing Custody Signatures"
+            value={scan.metrics.missingCustodySignatures}
           />
           <SummaryCard
             label="Evidence Inventory"

@@ -2,8 +2,10 @@
 
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/session";
+import { ensureUserSigningKey } from "@/lib/auth/signingKey";
 import { getSignerPublicKey, getWalletForUserOrDefault } from "@/lib/auth/wallet";
 import { sha256String, stableJson } from "@/lib/crypto/hash";
+import { signCustodyPayload } from "@/lib/crypto/localSigning";
 import { createLedgerBlock } from "@/lib/ledger/createBlock";
 import { prisma } from "@/lib/prisma";
 
@@ -51,6 +53,13 @@ export async function addCustodyEvent(evidenceId: string, formData: FormData) {
 
   const eventHash = sha256String(stableJson(custodyPayload));
 
+  if (!currentUser) {
+    throw new Error("Sign in to add signed custody events.");
+  }
+
+  const signingKey = await ensureUserSigningKey(currentUser.id);
+  const signature = signCustodyPayload(signingKey.signingPrivateKey, eventHash);
+
   const wallet = await getWalletForUserOrDefault(currentUser);
 
   if (!wallet) {
@@ -78,8 +87,8 @@ export async function addCustodyEvent(evidenceId: string, formData: FormData) {
       actorName,
       actorRole,
       actorId: currentUser?.id ?? null,
-      publicKey: getSignerPublicKey(currentUser),
-      signature: null,
+      publicKey: signingKey.signingPublicKey,
+      signature,
       previousEventHash,
       eventHash,
       blockHeight: block.height,

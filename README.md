@@ -25,7 +25,8 @@ This project does not claim to provide a real blockchain, real cryptocurrency, l
 - Duplicate hash warning
 - Evidence verification
 - Chain-of-custody events
-- Custody signature readiness indicator
+- Local custody signatures (Ed25519)
+- Custody signature verification
 - Local hash-linked ledger
 - Tamper test page
 - Individual PDF evidence reports
@@ -166,13 +167,25 @@ modify evidence records.
 Case detail pages include an advisory readiness checklist for verification
 coverage, failed verifications, ledger registration references, custody events,
 custody hash linkage, duplicate hashes, anchor status, packet export readiness,
-and custody signature readiness. The checklist does not block case packet
+and custody signature verification. The checklist does not block case packet
 export.
 
-Signature readiness checks whether custody events have recorded public
-key/signature fields. It does not prove production-grade key custody. A future
-version should generate local signing keys, sign custody events, verify
-signatures, and export public key fingerprints.
+## Local Custody Signatures
+
+New custody events are signed with a per-user local Ed25519 signing key. Each
+event stores the signer's public key and a signature over the custody event
+hash. The evidence detail page, case readiness checklist, Shield monitor, and
+reports can verify those stored signatures later.
+
+- Signatures are computed over the deterministic `eventHash` for each custody event.
+- Verification confirms the stored signature matches the stored event hash and public key.
+- Existing custody events created before this feature are not rewritten or auto-signed.
+- Local private keys are stored in the app database for MVP/demo convenience only.
+- Production would require hardened key custody such as OS keychain, hardware-backed keys, or external key management.
+- This remains local-first and tamper-evident, not tamper-proof.
+- This does not claim production-grade key custody, legal admissibility, or tamper-proof security.
+
+**LOCAL TESTNET — TEST_VAULT HAS NO REAL VALUE.**
 
 ## ForensicVault Shield
 
@@ -227,7 +240,6 @@ security claim.
 
 - Better production auth
 - Streaming file uploads
-- Stronger custody signatures
 - RFC 3161 timestamping
 - GitHub/Gist anchoring
 - Audit log export

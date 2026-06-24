@@ -13,6 +13,10 @@ model User {
   passwordHash String?
   role         String   @default("Investigator")
   publicKey    String?  @unique
+  signingPublicKey     String?
+  signingPrivateKey    String?
+  signingKeyFingerprint String?
+  signingKeyCreatedAt  DateTime?
   createdAt    DateTime @default(now())
 
   cases  Case[]

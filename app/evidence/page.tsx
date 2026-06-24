@@ -112,9 +112,6 @@ export default async function EvidenceInventoryPage({
             Search registered evidence by filename, SHA-256, case, status,
             type, duplicate state, and verification state.
           </p>
-          <p className="mt-2 text-sm font-medium tracking-wide text-amber-200/80 uppercase">
-            LOCAL TESTNET — TEST_VAULT HAS NO REAL VALUE.
-          </p>
         </div>
         <TestnetWarning />
       </div>

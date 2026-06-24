@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { TestnetWarning } from "@/components/TestnetWarning";
 import { getCurrentUser } from "@/lib/auth/session";
-import { getSignatureReadinessForEvents } from "@/lib/custody/signatureReadiness";
+import {
+  summarizeCustodySignatureEvents,
+} from "@/lib/custody/signatures";
 import { getDuplicateEvidenceForItem } from "@/lib/evidence/duplicates";
 import { prisma } from "@/lib/prisma";
 import { FEES, TEST_VAULT_SYMBOL } from "@/lib/token/testVault";
@@ -10,6 +13,28 @@ import { addCustodyEvent } from "./actions";
 function shortHash(hash?: string | null) {
   if (!hash) return "Pending";
   return hash.length > 20 ? `${hash.slice(0, 12)}…${hash.slice(-8)}` : hash;
+}
+
+function shortFingerprint(fingerprint?: string | null) {
+  if (!fingerprint) return "N/A";
+  return fingerprint.length > 16
+    ? `${fingerprint.slice(0, 8)}…${fingerprint.slice(-8)}`
+    : fingerprint;
+}
+
+function signatureStatusClassName(status: string) {
+  switch (status) {
+    case "PASS":
+      return "rounded bg-emerald-900/50 px-2.5 py-1 text-xs font-semibold text-emerald-300";
+    case "WARNING":
+      return "rounded bg-amber-900/50 px-2.5 py-1 text-xs font-semibold text-amber-300";
+    case "FAIL":
+      return "rounded bg-red-900/50 px-2.5 py-1 text-xs font-semibold text-red-300";
+    case "INFO":
+      return "rounded bg-slate-800 px-2.5 py-1 text-xs font-semibold text-slate-300";
+    default:
+      return "rounded bg-slate-800 px-2.5 py-1 text-xs font-semibold text-slate-300";
+  }
 }
 
 function custodyChainValid(
@@ -58,7 +83,7 @@ export default async function EvidenceDetailPage({
     evidence.registeredTxHash,
     evidence.custodyEvents
   );
-  const signatureReadiness = getSignatureReadinessForEvents(evidence.custodyEvents);
+  const signatureSummary = summarizeCustodySignatureEvents(evidence.custodyEvents);
 
   const custodyAction = addCustodyEvent.bind(null, evidence.id);
 
@@ -72,8 +97,8 @@ export default async function EvidenceDetailPage({
         <h1 className="mt-4 text-3xl font-bold">Evidence Detail</h1>
         <p className="mt-2 text-slate-400">{evidence.originalName}</p>
 
-        <div className="mt-4 inline-block rounded-lg border border-amber-500/50 px-4 py-2 text-sm font-semibold text-amber-300">
-          LOCAL TESTNET — TEST_VAULT HAS NO REAL VALUE.
+        <div className="mt-4">
+          <TestnetWarning />
         </div>
       </div>
 
@@ -150,9 +175,6 @@ export default async function EvidenceDetailPage({
             Verify Evidence costs {FEES.VERIFY_EVIDENCE} {TEST_VAULT_SYMBOL}.
           </p>
           <p>PDF report export is currently free in the local MVP.</p>
-          <p className="font-semibold text-amber-300">
-            LOCAL TESTNET — {TEST_VAULT_SYMBOL} HAS NO REAL VALUE.
-          </p>
         </div>
       </section>
 
@@ -259,9 +281,31 @@ export default async function EvidenceDetailPage({
           <p className="text-slate-400">No custody events recorded yet.</p>
         ) : (
           <div className="space-y-4">
-            {evidence.custodyEvents.map((event, index) => (
+            {evidence.custodyEvents.map((event, index) => {
+              const signatureResult = signatureSummary.events[index];
+              const isVerified = signatureResult?.verified ?? false;
+              const hasSignature = signatureResult?.hasSignature ?? false;
+
+              return (
               <div key={event.id} className="rounded-lg border border-slate-700 bg-slate-950/60 p-4">
-                <p className="text-sm text-slate-500">Event {index + 1}</p>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <p className="text-sm text-slate-500">Event {index + 1}</p>
+                  <span
+                    className={
+                      isVerified
+                        ? "text-xs font-semibold text-emerald-300"
+                        : hasSignature
+                          ? "text-xs font-semibold text-red-300"
+                          : "text-xs font-semibold text-amber-300"
+                    }
+                  >
+                    {isVerified
+                      ? "Signature verified"
+                      : hasSignature
+                        ? "Signature invalid"
+                        : "Signature missing"}
+                  </span>
+                </div>
                 <h3 className="text-xl font-semibold text-cyan-200">{event.action}</h3>
 
                 <div className="mt-3 grid gap-3 md:grid-cols-2">
@@ -271,10 +315,19 @@ export default async function EvidenceDetailPage({
                   <p><span className="text-slate-500">Event Hash:</span> <span className="font-mono">{shortHash(event.eventHash)}</span></p>
                   <p><span className="text-slate-500">Block:</span> {event.blockHeight ?? "Pending"}</p>
                   <p><span className="text-slate-500">Tx:</span> <span className="font-mono">{shortHash(event.txHash)}</span></p>
+                  <p>
+                    <span className="text-slate-500">Signer Fingerprint:</span>{" "}
+                    <span className="font-mono">{shortFingerprint(signatureResult?.fingerprint)}</span>
+                  </p>
+                  <p>
+                    <span className="text-slate-500">Signature:</span>{" "}
+                    <span className="font-mono">{shortHash(event.signature)}</span>
+                  </p>
                   <p className="md:col-span-2"><span className="text-slate-500">Notes:</span> {event.notes || "No notes."}</p>
                 </div>
               </div>
-            ))}
+            );
+            })}
           </div>
         )}
       </section>
@@ -282,45 +335,46 @@ export default async function EvidenceDetailPage({
       <section className="mb-8 rounded-xl border border-slate-700 bg-slate-900/70 p-6">
         <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold">Signature Readiness</h2>
+            <h2 className="text-lg font-semibold">Signature Verification</h2>
             <p className="mt-1 text-sm leading-relaxed text-slate-400">
-              Signature readiness checks whether custody events have recorded
-              public key/signature fields. It does not prove production-grade
-              key custody.
+              Signature verification confirms the stored local signature matches the
+              stored custody event hash and public key. This does not prove
+              production-grade key custody.
             </p>
           </div>
-          <span
-            className={
-              signatureReadiness.status === "PASS"
-                ? "rounded bg-emerald-900/50 px-2.5 py-1 text-xs font-semibold text-emerald-300"
-                : signatureReadiness.status === "WARNING"
-                  ? "rounded bg-amber-900/50 px-2.5 py-1 text-xs font-semibold text-amber-300"
-                  : "rounded bg-slate-800 px-2.5 py-1 text-xs font-semibold text-slate-300"
-            }
-          >
-            {signatureReadiness.status}
+          <span className={signatureStatusClassName(signatureSummary.status)}>
+            {signatureSummary.status}
           </span>
         </div>
-        <dl className="grid gap-4 md:grid-cols-3">
+        <dl className="grid gap-4 md:grid-cols-3 lg:grid-cols-5">
           <div>
-            <dt className="text-xs uppercase text-slate-500">Custody Events</dt>
-            <dd className="mt-1 text-slate-200">{signatureReadiness.eventCount}</dd>
+            <dt className="text-xs uppercase text-slate-500">Total Events</dt>
+            <dd className="mt-1 text-slate-200">{signatureSummary.totalCustodyEvents}</dd>
           </div>
           <div>
-            <dt className="text-xs uppercase text-slate-500">Missing Fields</dt>
+            <dt className="text-xs uppercase text-slate-500">Signed Events</dt>
+            <dd className="mt-1 text-slate-200">{signatureSummary.signedEvents}</dd>
+          </div>
+          <div>
+            <dt className="text-xs uppercase text-slate-500">Verified Events</dt>
+            <dd className="mt-1 text-slate-200">{signatureSummary.verifiedEvents}</dd>
+          </div>
+          <div>
+            <dt className="text-xs uppercase text-slate-500">Missing Signatures</dt>
             <dd className="mt-1 text-slate-200">
-              {signatureReadiness.missingSignatureCount}
+              {signatureSummary.missingSignatureEvents}
             </dd>
           </div>
           <div>
-            <dt className="text-xs uppercase text-slate-500">Placeholder Keys</dt>
-            <dd className="mt-1 text-slate-200">
-              {signatureReadiness.placeholderPublicKeyCount}
-            </dd>
+            <dt className="text-xs uppercase text-slate-500">Failed Signatures</dt>
+            <dd className="mt-1 text-slate-200">{signatureSummary.failedEvents}</dd>
           </div>
         </dl>
         <p className="mt-4 text-sm leading-relaxed text-slate-300">
-          {signatureReadiness.reason}
+          {signatureSummary.message}
+        </p>
+        <p className="mt-2 text-sm text-slate-400">
+          {signatureSummary.recommendedAction}
         </p>
       </section>
 
