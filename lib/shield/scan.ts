@@ -9,9 +9,11 @@ import {
   evidenceAlerts,
   ledgerAlerts,
   auditAlerts,
+  backupAlerts,
   roleSecurityAlerts,
   tamperBackupAlerts,
 } from "@/lib/shield/rules";
+import { getBackupShieldSummary } from "@/lib/backup/summary";
 import { validateAuditLogChain } from "@/lib/audit/validation";
 import { getRoleAuditSummary } from "@/lib/auth/roleAudit";
 import { getAnchorHistorySummary } from "@/lib/anchors/history";
@@ -104,6 +106,7 @@ export async function scanShield(): Promise<ShieldScanResult> {
     recentDeniedAuditEvents,
     recentHighAuditEvents,
     recentCriticalAuditEvents,
+    backupSummary,
   ] = await Promise.all([
     validateLedgerChain(),
     prisma.ledgerBlock.findFirst({ orderBy: { height: "desc" } }),
@@ -174,6 +177,7 @@ export async function scanShield(): Promise<ShieldScanResult> {
         timestamp: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
       },
     }),
+    getBackupShieldSummary(),
   ]);
 
   const duplicateGroups = getDuplicateGroups(evidenceItems);
@@ -214,6 +218,12 @@ export async function scanShield(): Promise<ShieldScanResult> {
       recentHighAuditEvents,
       recentCriticalAuditEvents,
       firstValidationError: auditValidation.errors[0] ?? null,
+    }),
+    ...backupAlerts({
+      backupPackageCount: backupSummary.backupPackageCount,
+      latestBackupFilename: backupSummary.latestBackupFilename,
+      latestBackupVerified: backupSummary.latestBackupVerified,
+      restoreMarkerCount: backupSummary.restoreMarkerCount,
     }),
   ].sort((a, b) => compareSeverity(a.severity, b.severity));
   const activeAlertIds = rawAlerts.map((alert) => alert.id);
@@ -311,6 +321,15 @@ export async function scanShield(): Promise<ShieldScanResult> {
     recentHighAuditEvents,
     recentCriticalAuditEvents,
     auditValidationErrorCount: auditValidation.errors.length,
+    backupPackageCount: backupSummary.backupPackageCount,
+    latestBackupFilename: backupSummary.latestBackupFilename,
+    latestBackupCreatedAt: backupSummary.latestBackupCreatedAt,
+    latestBackupSha256: backupSummary.latestBackupSha256,
+    latestBackupVerified: backupSummary.latestBackupVerified,
+    restoreMarkerCount: backupSummary.restoreMarkerCount,
+    latestRestoreAt: backupSummary.latestRestoreAt,
+    latestRestoreBackupFilename: backupSummary.latestRestoreBackupFilename,
+    preRestoreBackupExists: backupSummary.preRestoreBackupExists,
   };
   const status = computeShieldStatus(unacknowledgedAlerts);
   const rawStatus = computeRawShieldStatus(alerts);

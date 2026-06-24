@@ -15,6 +15,8 @@ const protectedPrefixes = [
   "/tamper-test",
   "/guard",
   "/audit",
+  "/backups",
+  "/dev",
   "/admin",
 ];
 

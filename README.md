@@ -249,6 +249,45 @@ chain, Shield event log, or external anchoring. It is local MVP logging only —
 not a production SIEM, not tamper-proof security, and not a legal admissibility
 guarantee.
 
+## Backup / Restore
+
+The `/backups` route creates local ForensicVault backup packages as `.zip` files
+stored under `storage/backups/`. Each package includes:
+
+* `manifest.json` with counts, integrity summaries, and file hashes
+* `database/vault.sqlite` (local SQLite vault)
+* `evidence/` files referenced by the database
+* `README_BACKUP.txt` with honest local MVP warnings
+
+Backup packages may contain sensitive local database data, including local MVP
+credential hashes and signing key material. Store backups securely.
+
+Supervisors and Admins can create, verify, and download backups. Only Admins
+can execute restore. Restore requires preview review and exact confirmation
+text: `RESTORE LOCAL VAULT`. A pre-restore safety backup is created automatically,
+and restore markers are written to `storage/restore-history/`.
+
+Restore replaces local database and evidence files. Restarting the dev server may
+be required. This is local MVP backup/restore, not production disaster recovery.
+
+Shield includes a **Backup Integrity** section with backup counts, latest backup
+hash, verification status, and restore history alerts.
+
+## Owner Dev Diagnostics
+
+The `/dev/diagnostics` route is an owner-only local developer tool gated by:
+
+* `FORENSICVAULT_OWNER_DEV_TOOLS=true`
+* Admin role
+* optional `FORENSICVAULT_OWNER_EMAIL` or `FORENSICVAULT_OWNER_NAME`
+
+It runs read-only checks across major ForensicVault features and reports overall
+**GO**, **WARNING**, or **NO_GO** status with per-check details. Full smoke /
+destructive tests are not run automatically in v0.1.8.
+
+Diagnostics do not prove production readiness, legal admissibility, or
+tamper-proof security.
+
 ## Anchor History
 
 The `/anchors` page can save local anchor snapshots and track publication URLs
@@ -271,7 +310,7 @@ Local MVP / testnet simulation.
 
 ForensicVault Chain is intended for local development, demos, training, and exploration of forensic integrity workflows. It does not publish to a real blockchain or timestamp authority automatically.
 
-Current release: **v0.1.7-audit-log**
+Current release: **v0.1.8-backup-restore-diagnostics**
 
 Current release status: local-first portfolio MVP / testnet simulation. It is
 tamper-evident, not tamper-proof; it has no real blockchain, no real

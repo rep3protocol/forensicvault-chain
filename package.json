@@ -12,6 +12,7 @@
   "dependencies": {
     "@prisma/adapter-better-sqlite3": "^7.8.0",
     "@prisma/client": "^7.8.0",
+    "jszip": "^3.10.1",
     "lucide-react": "^1.21.0",
     "next": "16.2.9",
     "pdf-lib": "^1.17.1",

@@ -751,3 +751,93 @@ export function auditAlerts(input: {
 
   return alerts;
 }
+
+export function backupAlerts(input: {
+  backupPackageCount: number;
+  latestBackupFilename: string | null;
+  latestBackupVerified: boolean | null;
+  restoreMarkerCount: number;
+}): ShieldAlert[] {
+  const {
+    backupPackageCount,
+    latestBackupFilename,
+    latestBackupVerified,
+    restoreMarkerCount,
+  } = input;
+
+  const alerts: ShieldAlert[] = [];
+
+  if (backupPackageCount === 0) {
+    alerts.push(
+      createAlert({
+        id: "backup-none-found",
+        severity: "MEDIUM",
+        category: "storage",
+        title: "No local backup packages found",
+        description: "No ForensicVault backup packages are stored locally yet.",
+        reference: "Backups",
+        reason: "backupPackageCount is 0.",
+        action: "Create a local backup from /backups if you want a vault snapshot.",
+      }),
+    );
+    return alerts;
+  }
+
+  alerts.push(
+    createAlert({
+      id: "backup-recent-exists",
+      severity: "INFO",
+      category: "storage",
+      title: "Recent backup package exists",
+      description: "At least one local ForensicVault backup package is available.",
+      reference: latestBackupFilename ?? "Backups",
+      reason: `${backupPackageCount} backup package(s) found.`,
+      action: "Verify and store backups securely outside this machine if needed.",
+    }),
+  );
+
+  if (latestBackupVerified === true) {
+    alerts.push(
+      createAlert({
+        id: "backup-verification-passed",
+        severity: "INFO",
+        category: "storage",
+        title: "Backup verification passed",
+        description: "The latest local backup package passed hash verification.",
+        reference: latestBackupFilename ?? "Backups",
+        reason: "Latest backup verification returned valid=true.",
+        action: "Continue routine local backup checks.",
+      }),
+    );
+  } else if (latestBackupVerified === false) {
+    alerts.push(
+      createAlert({
+        id: "backup-verification-failed",
+        severity: "HIGH",
+        category: "storage",
+        title: "Latest backup verification failed",
+        description: "The latest local backup package did not pass hash verification.",
+        reference: latestBackupFilename ?? "Backups",
+        reason: "Latest backup verification returned valid=false.",
+        action: "Recreate the backup and verify package integrity before relying on it.",
+      }),
+    );
+  }
+
+  if (restoreMarkerCount > 0) {
+    alerts.push(
+      createAlert({
+        id: "backup-restore-history",
+        severity: "HIGH",
+        category: "storage",
+        title: "Restore history exists",
+        description: "A local restore has been performed on this vault.",
+        reference: "Restore history",
+        reason: `${restoreMarkerCount} restore marker(s) recorded.`,
+        action: "Review restore history and the Audit Log.",
+      }),
+    );
+  }
+
+  return alerts;
+}

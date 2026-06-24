@@ -291,6 +291,7 @@ export default async function GuardPage() {
     : false;
   const canManageUsers = session ? can(session.role, "MANAGE_USERS") : false;
   const canViewAudit = session ? can(session.role, "VIEW_AUDIT_LOG") : false;
+  const canViewBackups = session ? can(session.role, "VIEW_BACKUPS") : false;
   const scan = await scanShield();
   const activeCounts = countAlertsBySeverity(scan.unacknowledgedAlerts);
   const criticalHighAlerts = scan.unacknowledgedAlerts.filter(
@@ -720,6 +721,54 @@ export default async function GuardPage() {
             className="inline-flex rounded border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-200 transition-colors hover:border-slate-600 hover:bg-slate-800"
           >
             Open Audit Log
+          </Link>
+        )}
+      </section>
+
+      <section className="mb-10">
+        <h2 className="mb-4 text-sm font-medium tracking-wide text-slate-300 uppercase">
+          Backup Integrity
+        </h2>
+        <div className="mb-4 grid gap-4 md:grid-cols-3">
+          <SummaryCard
+            label="Backup Packages"
+            value={scan.metrics.backupPackageCount}
+          />
+          <SummaryCard
+            label="Latest Backup"
+            value={scan.metrics.latestBackupFilename ?? "—"}
+            detail={scan.metrics.latestBackupCreatedAt ?? undefined}
+          />
+          <SummaryCard
+            label="Latest Backup SHA-256"
+            value={shortenHash(scan.metrics.latestBackupSha256, 12, 8)}
+          />
+          <SummaryCard
+            label="Latest Verification"
+            value={
+              scan.metrics.latestBackupVerified === null
+                ? "—"
+                : scan.metrics.latestBackupVerified
+                  ? "Passed"
+                  : "Failed"
+            }
+          />
+          <SummaryCard
+            label="Restore Markers"
+            value={scan.metrics.restoreMarkerCount}
+          />
+          <SummaryCard
+            label="Latest Restore"
+            value={scan.metrics.latestRestoreAt ?? "—"}
+            detail={scan.metrics.latestRestoreBackupFilename ?? undefined}
+          />
+        </div>
+        {canViewBackups && (
+          <Link
+            href="/backups"
+            className="inline-flex rounded border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-200 transition-colors hover:border-slate-600 hover:bg-slate-800"
+          >
+            Open Backups
           </Link>
         )}
       </section>
