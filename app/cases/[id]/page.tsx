@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { TestnetWarning } from "@/components/TestnetWarning";
+import { can } from "@/lib/auth/permissions";
+import { getCurrentUserWithRole, requirePermission } from "@/lib/auth/requirePermission";
 import { getCaseReadiness } from "@/lib/cases/readiness";
 import { getDuplicateCountsByHashes } from "@/lib/evidence/duplicates";
 import { shortenHash } from "@/lib/format";
@@ -25,6 +27,9 @@ function readinessClassName(status: string) {
 
 export default async function CaseDetailPage({ params }: CaseDetailPageProps) {
   const { id } = await params;
+  await requirePermission("VIEW_CASE_DETAIL");
+  const session = await getCurrentUserWithRole();
+  const canUploadEvidence = session ? can(session.role, "UPLOAD_EVIDENCE") : false;
 
   const caseItem = await prisma.case.findUnique({
     where: { id },
@@ -115,12 +120,18 @@ export default async function CaseDetailPage({ params }: CaseDetailPageProps) {
             Actions
           </h2>
           <div className="space-y-3">
+            {canUploadEvidence ? (
             <Link
               href={`/cases/${caseItem.id}/evidence/new`}
               className="block w-full rounded bg-cyan-700 px-4 py-2 text-center text-sm font-medium text-white transition-colors hover:bg-cyan-600"
             >
               Add Evidence
             </Link>
+            ) : (
+              <p className="rounded border border-slate-800 bg-slate-950/40 px-4 py-2 text-center text-sm text-slate-400">
+                Evidence upload is not available for your local role.
+              </p>
+            )}
             <Link
               href={`/cases/${caseItem.id}/packet`}
               className="block w-full rounded border border-slate-700 px-4 py-2 text-center text-sm font-medium text-slate-100 transition-colors hover:border-cyan-500 hover:text-cyan-200"

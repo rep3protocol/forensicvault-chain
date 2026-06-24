@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PrintButton } from "@/components/PrintButton";
+import { requireAnyPermission } from "@/lib/auth/requirePermission";
 import {
   custodyStatus,
   formatPacketDate,
@@ -31,6 +32,7 @@ function MonoDetail({ label, value }: { label: string; value: unknown }) {
 
 export default async function CasePacketPage({ params }: CasePacketPageProps) {
   const { id } = await params;
+  await requireAnyPermission(["VIEW_REPORTS", "EXPORT_CASE_PACKET"]);
   const packet = await getCasePacketData(id);
 
   if (!packet) {

@@ -8,7 +8,8 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { TestnetWarning } from "@/components/TestnetWarning";
-import { requireCurrentUser } from "@/lib/auth/session";
+import { can } from "@/lib/auth/permissions";
+import { getCurrentUserWithRole, requirePermission } from "@/lib/auth/requirePermission";
 import { shortenHash } from "@/lib/format";
 import { scanShield } from "@/lib/shield/scan";
 import { severityClassName } from "@/lib/shield/severity";
@@ -64,9 +65,17 @@ function SummaryCard({
   );
 }
 
-function AlertCard({ alert }: { alert: ShieldAlert }) {
+function AlertCard({
+  alert,
+  allowAcknowledge,
+  allowClearAcknowledgement,
+}: {
+  alert: ShieldAlert;
+  allowAcknowledge: boolean;
+  allowClearAcknowledgement: boolean;
+}) {
   const acknowledgement = alert.acknowledgement;
-  const canAcknowledge = alert.severity !== "INFO";
+  const canAcknowledge = alert.severity !== "INFO" && allowAcknowledge;
 
   return (
     <article className={`rounded-lg border p-5 ${severityClassName(alert.severity)}`}>
@@ -127,11 +136,17 @@ function AlertCard({ alert }: { alert: ShieldAlert }) {
             <input type="hidden" name="alertId" value={alert.id} />
             <button
               type="submit"
-              className="rounded border border-slate-600 bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:border-slate-500 hover:bg-slate-800"
+              disabled={!allowClearAcknowledgement}
+              className="rounded border border-slate-600 bg-slate-900 px-3 py-1.5 text-xs font-medium text-slate-200 transition-colors hover:border-slate-500 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Clear Acknowledgement
             </button>
           </form>
+          {!allowClearAcknowledgement && (
+            <p className="mt-2 text-xs text-slate-500">
+              Your current local role cannot clear Shield acknowledgements.
+            </p>
+          )}
         </div>
       ) : canAcknowledge ? (
         <form
@@ -162,6 +177,10 @@ function AlertCard({ alert }: { alert: ShieldAlert }) {
             Acknowledge Alert
           </button>
         </form>
+      ) : alert.severity !== "INFO" ? (
+        <p className="mt-4 text-xs text-slate-500">
+          Your current local role cannot acknowledge Shield alerts.
+        </p>
       ) : null}
     </article>
   );
@@ -171,10 +190,14 @@ function AlertSection({
   title,
   alerts,
   empty,
+  allowAcknowledge,
+  allowClearAcknowledgement,
 }: {
   title: string;
   alerts: ShieldAlert[];
   empty: string;
+  allowAcknowledge: boolean;
+  allowClearAcknowledgement: boolean;
 }) {
   return (
     <section className="mb-10">
@@ -188,7 +211,12 @@ function AlertSection({
       ) : (
         <div className="space-y-4">
           {alerts.map((alert) => (
-            <AlertCard key={alert.id} alert={alert} />
+            <AlertCard
+              key={alert.id}
+              alert={alert}
+              allowAcknowledge={allowAcknowledge}
+              allowClearAcknowledgement={allowClearAcknowledgement}
+            />
           ))}
         </div>
       )}
@@ -253,7 +281,15 @@ function EventLog({ events }: { events: ShieldEventSummary[] }) {
 }
 
 export default async function GuardPage() {
-  await requireCurrentUser();
+  await requirePermission("VIEW_SHIELD");
+  const session = await getCurrentUserWithRole();
+  const allowAcknowledge = session
+    ? can(session.role, "ACKNOWLEDGE_SHIELD_ALERT")
+    : false;
+  const allowClearAcknowledgement = session
+    ? can(session.role, "CLEAR_SHIELD_ACKNOWLEDGEMENT")
+    : false;
+  const canManageUsers = session ? can(session.role, "MANAGE_USERS") : false;
   const scan = await scanShield();
   const activeCounts = countAlertsBySeverity(scan.unacknowledgedAlerts);
   const criticalHighAlerts = scan.unacknowledgedAlerts.filter(
@@ -265,6 +301,11 @@ export default async function GuardPage() {
   const duplicateAlerts = alertsForCategory(scan.alerts, "duplicates");
   const anchorAlerts = alertsForCategory(scan.alerts, "anchors");
   const caseAlerts = alertsForCategory(scan.alerts, "cases");
+  const securityAlerts = alertsForCategory(scan.alerts, "security");
+  const alertInteractionProps = {
+    allowAcknowledge,
+    allowClearAcknowledgement,
+  };
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-10">
@@ -284,6 +325,16 @@ export default async function GuardPage() {
           <div className="mt-4">
             <TestnetWarning />
           </div>
+          {canManageUsers && (
+            <div className="mt-4">
+              <Link
+                href="/admin/users"
+                className="inline-flex rounded border border-purple-500/40 bg-purple-500/10 px-3 py-1.5 text-sm font-medium text-purple-200 transition-colors hover:bg-purple-500/20"
+              >
+                Admin → Users
+              </Link>
+            </div>
+          )}
         </div>
         <div className={`rounded-lg border px-5 py-4 ${statusClassName(scan.status)}`}>
           <p className="text-xs font-medium tracking-wide uppercase">
@@ -403,31 +454,66 @@ export default async function GuardPage() {
           label="Duplicate Anchor Groups"
           value={scan.metrics.duplicateAnchorRecordGroups}
         />
+        <SummaryCard label="Total Users" value={scan.metrics.totalUsers} />
+        <SummaryCard label="Admin Users" value={scan.metrics.adminCount} />
+        <SummaryCard
+          label="Unrecognized Roles"
+          value={scan.metrics.unrecognizedRoleCount}
+        />
       </section>
 
       <AlertSection
         title="Critical / High Alerts"
         alerts={criticalHighAlerts}
         empty="No unacknowledged critical or high alerts detected by the rule-based monitor."
+        {...alertInteractionProps}
       />
 
       <AlertSection
         title="Acknowledged Alerts"
         alerts={scan.acknowledgedAlerts}
         empty="No active Shield alerts have been acknowledged yet."
+        {...alertInteractionProps}
       />
 
       <AlertSection
         title="Evidence Integrity"
         alerts={evidenceAlerts}
         empty="No evidence integrity alerts detected."
+        {...alertInteractionProps}
       />
 
       <AlertSection
         title="Custody Integrity"
         alerts={custodyAlerts}
         empty="No custody integrity alerts detected."
+        {...alertInteractionProps}
       />
+
+      <section className="mb-10">
+        <h2 className="mb-4 text-sm font-medium tracking-wide text-slate-300 uppercase">
+          Local Role Security
+        </h2>
+        <div className="mb-4 grid gap-4 md:grid-cols-3">
+          <SummaryCard label="Total Users" value={scan.metrics.totalUsers} />
+          <SummaryCard label="Admin Users" value={scan.metrics.adminCount} />
+          <SummaryCard
+            label="Unrecognized Roles"
+            value={scan.metrics.unrecognizedRoleCount}
+          />
+        </div>
+        {securityAlerts.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-slate-700 bg-slate-900/30 px-6 py-8 text-sm text-slate-400">
+            No local role security alerts detected.
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {securityAlerts.map((alert) => (
+              <AlertCard key={alert.id} alert={alert} {...alertInteractionProps} />
+            ))}
+          </div>
+        )}
+      </section>
 
       <section className="mb-10">
         <h2 className="mb-4 text-sm font-medium tracking-wide text-slate-300 uppercase">
@@ -459,7 +545,7 @@ export default async function GuardPage() {
         ) : (
           <div className="space-y-4">
             {caseAlerts.map((alert) => (
-              <AlertCard key={alert.id} alert={alert} />
+              <AlertCard key={alert.id} alert={alert} {...alertInteractionProps} />
             ))}
           </div>
         )}
@@ -484,7 +570,7 @@ export default async function GuardPage() {
         </div>
         <div className="space-y-4">
           {ledgerAlerts.map((alert) => (
-            <AlertCard key={alert.id} alert={alert} />
+            <AlertCard key={alert.id} alert={alert} {...alertInteractionProps} />
           ))}
           {scan.ledgerErrors.length > 0 && (
             <div className="rounded-lg border border-red-800/70 bg-red-950/30 p-5">
@@ -509,7 +595,7 @@ export default async function GuardPage() {
         </h2>
         <div className="mb-4 space-y-4">
           {duplicateAlerts.map((alert) => (
-            <AlertCard key={alert.id} alert={alert} />
+            <AlertCard key={alert.id} alert={alert} {...alertInteractionProps} />
           ))}
         </div>
         {scan.duplicateGroups.length > 0 && (
@@ -581,7 +667,7 @@ export default async function GuardPage() {
         ) : (
           <div className="space-y-4">
             {anchorAlerts.map((alert) => (
-              <AlertCard key={alert.id} alert={alert} />
+              <AlertCard key={alert.id} alert={alert} {...alertInteractionProps} />
             ))}
           </div>
         )}

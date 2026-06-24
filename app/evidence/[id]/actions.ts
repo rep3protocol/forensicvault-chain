@@ -1,8 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth/session";
 import { ensureUserSigningKey } from "@/lib/auth/signingKey";
+import { assertPermission } from "@/lib/auth/requirePermission";
 import { getSignerPublicKey, getWalletForUserOrDefault } from "@/lib/auth/wallet";
 import { sha256String, stableJson } from "@/lib/crypto/hash";
 import { signCustodyPayload } from "@/lib/crypto/localSigning";
@@ -13,6 +13,11 @@ const LOCAL_VALIDATOR = "LOCAL_DEV_VALIDATOR";
 const CUSTODY_FEE = 3;
 
 export async function addCustodyEvent(evidenceId: string, formData: FormData) {
+  const currentUser = await assertPermission(
+    "ADD_CUSTODY_EVENT",
+    "Your current local role does not allow adding custody events.",
+  );
+
   const evidence = await prisma.evidenceItem.findUnique({
     where: { id: evidenceId },
   });
@@ -22,9 +27,8 @@ export async function addCustodyEvent(evidenceId: string, formData: FormData) {
   }
 
   const action = String(formData.get("action") || "").trim();
-  const currentUser = await getCurrentUser();
-  const actorName = String(formData.get("actorName") || "").trim() || currentUser?.name || "";
-  const actorRole = String(formData.get("actorRole") || "").trim() || currentUser?.role || "";
+  const actorName = String(formData.get("actorName") || "").trim() || currentUser.name || "";
+  const actorRole = String(formData.get("actorRole") || "").trim() || currentUser.role || "";
   const notes = String(formData.get("notes") || "").trim();
 
   if (!action) throw new Error("Custody action is required.");
@@ -52,10 +56,6 @@ export async function addCustodyEvent(evidenceId: string, formData: FormData) {
   };
 
   const eventHash = sha256String(stableJson(custodyPayload));
-
-  if (!currentUser) {
-    throw new Error("Sign in to add signed custody events.");
-  }
 
   const signingKey = await ensureUserSigningKey(currentUser.id);
   const signature = signCustodyPayload(signingKey.signingPrivateKey, eventHash);

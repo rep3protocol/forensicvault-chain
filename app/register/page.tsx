@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { TestnetWarning } from "@/components/TestnetWarning";
+import { ROLES, ROLE_LABELS } from "@/lib/auth/roles";
 import { register } from "./actions";
 
 export default function RegisterPage() {
@@ -54,11 +55,17 @@ export default function RegisterPage() {
           </label>
           <label className="grid gap-1.5">
             <span className="text-xs font-medium text-slate-400">Role</span>
-            <input
+            <select
               name="role"
-              defaultValue="Investigator"
+              defaultValue="INVESTIGATOR"
               className="rounded border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-cyan-600 focus:outline-none"
-            />
+            >
+              {ROLES.filter((role) => role !== "ADMIN").map((role) => (
+                <option key={role} value={role}>
+                  {ROLE_LABELS[role]}
+                </option>
+              ))}
+            </select>
           </label>
           <button
             type="submit"

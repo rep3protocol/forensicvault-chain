@@ -6,7 +6,7 @@ import {
   createAnchorRecord,
   findDuplicateAnchorRecordForCurrent,
 } from "@/lib/anchors/history";
-import { requireCurrentUser } from "@/lib/auth/session";
+import { assertPermission } from "@/lib/auth/requirePermission";
 import { prisma } from "@/lib/prisma";
 
 function stringValue(formData: FormData, key: string) {
@@ -30,7 +30,10 @@ function requiredString(formData: FormData, key: string) {
 }
 
 export async function saveCurrentAnchorRecord(formData: FormData) {
-  const user = await requireCurrentUser();
+  const user = await assertPermission(
+    "SAVE_ANCHOR",
+    "Your current local role does not allow saving anchor snapshots.",
+  );
   const label = optionalString(formData, "label");
   const duplicate = await findDuplicateAnchorRecordForCurrent();
 
@@ -59,7 +62,10 @@ export async function saveCurrentAnchorRecord(formData: FormData) {
 }
 
 export async function updateAnchorPublication(formData: FormData) {
-  await requireCurrentUser();
+  await assertPermission(
+    "UPDATE_ANCHOR_PUBLICATION",
+    "Your current local role does not allow updating anchor publication details.",
+  );
   const id = requiredString(formData, "id");
 
   await prisma.anchorRecord.update({

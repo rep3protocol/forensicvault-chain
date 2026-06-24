@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { requirePermission } from "@/lib/auth/requirePermission";
 import { getDuplicateCountsByHashes } from "@/lib/evidence/duplicates";
 import { prisma } from "@/lib/prisma";
 
@@ -15,6 +16,8 @@ function formatDate(value: Date) {
 }
 
 export default async function ReportsPage() {
+  await requirePermission("VIEW_REPORTS");
+
   const evidenceItems = await prisma.evidenceItem.findMany({
     orderBy: { createdAt: "desc" },
     include: {

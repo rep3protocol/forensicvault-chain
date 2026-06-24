@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { requirePermission } from "@/lib/auth/requirePermission";
 import { prisma } from "@/lib/prisma";
 import { PrintButton } from "@/components/PrintButton";
 import { summarizeCustodySignatureEvents } from "@/lib/custody/signatures";
@@ -40,6 +41,7 @@ export default async function ReportDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  await requirePermission("VIEW_REPORTS");
 
   const evidence = await prisma.evidenceItem.findUnique({
     where: { id },

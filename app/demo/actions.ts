@@ -5,7 +5,7 @@ import path from "node:path";
 import type { Wallet } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireCurrentUser } from "@/lib/auth/session";
+import { assertPermission } from "@/lib/auth/requirePermission";
 import { ensureWalletForUser, getSignerPublicKey } from "@/lib/auth/wallet";
 import { sha256Buffer, sha256String, stableJson } from "@/lib/crypto/hash";
 import { createLedgerBlock } from "@/lib/ledger/createBlock";
@@ -71,7 +71,10 @@ function revalidateDemoPaths(caseId?: string, evidenceId?: string) {
 }
 
 export async function createDemoCase() {
-  const user = await requireCurrentUser();
+  const user = await assertPermission(
+    "RUN_DEMO_ACTIONS",
+    "Your current local role does not allow running demo actions.",
+  );
   let wallet = await ensureWalletForUser(user);
 
   const existingDemoCase = await prisma.case.findFirst({
@@ -245,7 +248,10 @@ export async function createDemoCase() {
 }
 
 export async function resetDemoData() {
-  await requireCurrentUser();
+  await assertPermission(
+    "RUN_DEMO_ACTIONS",
+    "Your current local role does not allow running demo actions.",
+  );
 
   const demoCases = await prisma.case.findMany({
     where: { title: { startsWith: DEMO_CASE_TITLE_PREFIX } },

@@ -1,9 +1,15 @@
 import Link from "next/link";
 import { TestnetWarning } from "@/components/TestnetWarning";
+import { can } from "@/lib/auth/permissions";
+import { getCurrentUserWithRole, requirePermission } from "@/lib/auth/requirePermission";
 import { prisma } from "@/lib/prisma";
 import { createCase } from "./actions";
 
 export default async function CasesPage() {
+  await requirePermission("VIEW_CASES");
+  const session = await getCurrentUserWithRole();
+  const canCreateCase = session ? can(session.role, "CREATE_CASE") : false;
+
   const cases = await prisma.case.findMany({
     orderBy: { createdAt: "desc" },
     include: {
@@ -29,6 +35,7 @@ export default async function CasesPage() {
         <h2 className="mb-4 text-sm font-medium tracking-wide text-slate-300 uppercase">
           Create Case
         </h2>
+        {canCreateCase ? (
         <form action={createCase} className="grid gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1.5 sm:col-span-2">
             <span className="text-xs font-medium text-slate-400">
@@ -79,6 +86,11 @@ export default async function CasesPage() {
             </button>
           </div>
         </form>
+        ) : (
+          <p className="text-sm text-slate-400">
+            Your current local role cannot create cases. Contact a local Admin if you need access.
+          </p>
+        )}
       </section>
 
       <section>

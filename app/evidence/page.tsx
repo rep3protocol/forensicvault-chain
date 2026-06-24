@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Prisma } from "@prisma/client";
 import { TestnetWarning } from "@/components/TestnetWarning";
-import { requireCurrentUser } from "@/lib/auth/session";
+import { requirePermission } from "@/lib/auth/requirePermission";
 import { getDuplicateCountsByHashes } from "@/lib/evidence/duplicates";
 import { shortenHash } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
@@ -34,7 +34,7 @@ function optionValues(values: (string | null | undefined)[]) {
 export default async function EvidenceInventoryPage({
   searchParams,
 }: EvidenceInventoryPageProps) {
-  await requireCurrentUser();
+  await requirePermission("VIEW_EVIDENCE");
   const query = await searchParams;
   const q = clean(query.q);
   const caseId = clean(query.caseId);

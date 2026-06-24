@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { TestnetWarning } from "@/components/TestnetWarning";
+import { can } from "@/lib/auth/permissions";
+import { getCurrentUserWithRole, requirePermission } from "@/lib/auth/requirePermission";
 import { getAnchorExport, getAnchorText } from "@/lib/anchors/anchor";
 import {
   compareCurrentAnchorToRecord,
@@ -77,6 +79,13 @@ export default async function AnchorsPage({
     existingAnchorId?: string;
   }>;
 }) {
+  await requirePermission("VIEW_ANCHORS");
+  const session = await getCurrentUserWithRole();
+  const canSaveAnchor = session ? can(session.role, "SAVE_ANCHOR") : false;
+  const canUpdatePublication = session
+    ? can(session.role, "UPDATE_ANCHOR_PUBLICATION")
+    : false;
+
   const query = await searchParams;
   const [anchor, records, latestComparison, currentDuplicate, duplicateGroups] =
     await Promise.all([
@@ -199,6 +208,7 @@ export default async function AnchorsPage({
         <h2 className="mb-4 text-sm font-medium tracking-wide text-slate-300 uppercase">
           Save Anchor Snapshot
         </h2>
+        {canSaveAnchor ? (
         <form action={saveCurrentAnchorRecord} className="grid gap-4 sm:grid-cols-[1fr_auto]">
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-medium text-slate-400">Optional Label</span>
@@ -217,6 +227,11 @@ export default async function AnchorsPage({
             </button>
           </div>
         </form>
+        ) : (
+          <p className="text-sm text-slate-400">
+            Your current local role cannot save anchor snapshots.
+          </p>
+        )}
         <p className="mt-3 text-xs leading-relaxed text-slate-500">
           Saved snapshots stay local. Publish the hash and root elsewhere if you
           need external comparison later. If this ledger state is already saved,
@@ -363,7 +378,7 @@ export default async function AnchorsPage({
         )}
       </section>
 
-      {records.length > 0 && (
+      {records.length > 0 && canUpdatePublication && (
         <section className="mb-8 rounded-lg border border-slate-800 bg-slate-900/50 p-6">
           <h2 className="mb-4 text-sm font-medium tracking-wide text-slate-300 uppercase">
             Publication Tracking

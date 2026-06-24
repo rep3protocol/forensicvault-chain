@@ -561,3 +561,90 @@ export function custodySignatureAlerts(input: {
     }),
   ];
 }
+
+export function roleSecurityAlerts(input: {
+  totalUsers: number;
+  adminCount: number;
+  unrecognizedRoleCount: number;
+}): ShieldAlert[] {
+  const { totalUsers, adminCount, unrecognizedRoleCount } = input;
+
+  if (totalUsers === 0) {
+    return [
+      createAlert({
+        id: "role-no-users",
+        severity: "INFO",
+        category: "security",
+        title: "No local users exist",
+        description: "No local user accounts are available for role review.",
+        reference: "User accounts",
+        reason: "User count is 0.",
+        action: "Register or seed a local user for MVP testing.",
+      }),
+    ];
+  }
+
+  if (adminCount === 0) {
+    return [
+      createAlert({
+        id: "role-no-admin",
+        severity: "CRITICAL",
+        category: "security",
+        title: "No local admin user exists",
+        description: "No user currently has the local Admin role.",
+        reference: "User roles",
+        reason: "Admin count is 0.",
+        action: "Assign at least one Admin in local user management.",
+      }),
+    ];
+  }
+
+  const alerts: ShieldAlert[] = [];
+
+  if (adminCount === 1) {
+    alerts.push(
+      createAlert({
+        id: "role-single-admin",
+        severity: "HIGH",
+        category: "security",
+        title: "Only one local admin exists",
+        description: "A single Admin account is responsible for all privileged local actions.",
+        reference: "User roles",
+        reason: "Admin count is 1.",
+        action: "Create or assign a backup Admin for local continuity.",
+      }),
+    );
+  }
+
+  if (unrecognizedRoleCount > 0) {
+    alerts.push(
+      createAlert({
+        id: "role-unrecognized-values",
+        severity: "MEDIUM",
+        category: "security",
+        title: "Unrecognized local user role",
+        description: "One or more users have role values that do not match the local MVP role set.",
+        reference: "User roles",
+        reason: `${unrecognizedRoleCount} user(s) have unrecognized role values.`,
+        action: "Review user roles in Admin → Users.",
+      }),
+    );
+  }
+
+  if (alerts.length === 0) {
+    alerts.push(
+      createAlert({
+        id: "role-configuration-valid",
+        severity: "INFO",
+        category: "security",
+        title: "Local role configuration valid",
+        description: "At least one Admin exists and no unrecognized role values were detected.",
+        reference: "User roles",
+        reason: `${adminCount} Admin account(s); ${totalUsers} total user(s).`,
+        action: "Continue reviewing Shield alerts and local workflow permissions.",
+      }),
+    );
+  }
+
+  return alerts;
+}
